@@ -1,0 +1,44 @@
+{
+  "title": "Novel Audio Miner User Dictionary Seed",
+  "version": 1,
+  "entries": [
+    {
+      "term": "後",
+      "reading": "あと",
+      "tags": [
+        "noun",
+        "time",
+        "grammar-like"
+      ],
+      "definitions": [
+        "after; later; behind"
+      ],
+      "source": "seed"
+    },
+    {
+      "term": "途中",
+      "reading": "とちゅう",
+      "tags": [
+        "noun",
+        "adverbial",
+        "dictionary-term"
+      ],
+      "definitions": [
+        "on the way; midway; in the middle"
+      ],
+      "source": "seed"
+    },
+    {
+      "term": "交通事故",
+      "reading": "こうつうじこ",
+      "tags": [
+        "compound",
+        "noun"
+      ],
+      "definitions": [
+        "traffic accident"
+      ],
+      "source": "seed"
+    }
+  ]
+}

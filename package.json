@@ -1,0 +1,20 @@
+{
+  "name": "novel-audio-miner",
+  "private": true,
+  "version": "4.1.0",
+  "type": "module",
+  "description": "Local Japanese EPUB reader and Anki mining helper.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "6.0.3",
+    "jszip": "3.10.1",
+    "kuromoji": "0.1.2",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "vite": "8.1.3"
+  }
+}

@@ -1,0 +1,76 @@
+﻿# ============================================================
+# Node dependencies and generated builds
+# ============================================================
+
+node_modules/
+dist/
+build/
+coverage/
+.vite/
+.next/
+
+# ============================================================
+# Large local dictionary and frequency data
+# ============================================================
+
+public/dict/*.json
+
+# Keep small seed/config files if they exist
+!public/dict/user_dictionary_seed.json
+
+# ============================================================
+# Generated application data
+# ============================================================
+
+*.log
+logs/
+*.tmp
+*.temp
+
+# ============================================================
+# Temporary development artifacts
+# ============================================================
+
+*_inventory.txt
+*_current_source.txt
+*_source_bundle.txt
+*_debug.json
+npm_dependency_snapshot.json
+
+*.bak
+*.backup
+*.orig
+
+# One-time patching and cleanup files
+apply_*.py
+patch_*.py
+cleanup_*.ps1
+restore_*.ps1
+delete_*.ps1
+
+# ============================================================
+# Local configuration and secrets
+# ============================================================
+
+.env
+.env.*
+!.env.example
+
+# ============================================================
+# Editors and operating-system files
+# ============================================================
+
+.vscode/
+.idea/
+*.code-workspace
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ============================================================
+# Archives
+# ============================================================
+
+*.zip
+*.7z
+*.rar
