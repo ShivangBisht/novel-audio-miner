@@ -1,33 +1,37 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
-  analyzeSentence,
   discoverAnalyzerRoutes,
   getAnalyzerHealth
 } from '../lib/jpAnalyzerClient.js';
 
 export default function JpAnalyzerIntegrationPanel({
-  currentData
+  currentData,
+  shadowState,
+  onClearShadowCache
 }) {
-  const [status, setStatus] = useState('not checked');
+  const [connectionStatus, setConnectionStatus] =
+    useState('not checked');
   const [health, setHealth] = useState(null);
   const [serverInfo, setServerInfo] = useState(null);
-  const [analysisSummary, setAnalysisSummary] =
-    useState(null);
-  const [error, setError] = useState('');
+  const [connectionError, setConnectionError] =
+    useState('');
 
   const sentence = useMemo(
     () => String(currentData?.plainText ?? ''),
     [currentData?.plainText]
   );
 
-  useEffect(() => {
-    setAnalysisSummary(null);
-    setError('');
-  }, [sentence]);
+  const result = shadowState?.result ?? null;
+  const analysisError = shadowState?.error ?? null;
+
+  const roleCounts = useMemo(
+    () => countRoles(result?.resolvedSpans ?? []),
+    [result]
+  );
 
   async function checkConnection() {
-    setStatus('checking');
-    setError('');
+    setConnectionStatus('checking');
+    setConnectionError('');
 
     try {
       const [healthResult, routesResult] =
@@ -38,75 +42,29 @@ export default function JpAnalyzerIntegrationPanel({
 
       setHealth(healthResult);
       setServerInfo(routesResult);
-      setStatus('available');
-    } catch (caught) {
+      setConnectionStatus('available');
+    } catch (error) {
       setHealth(null);
       setServerInfo(null);
-      setStatus('unavailable');
-      setError(caught?.message ?? String(caught));
-    }
-  }
-
-  async function inspectCurrentSentence() {
-    if (!sentence.trim()) {
-      return;
-    }
-
-    setStatus('analyzing');
-    setError('');
-
-    try {
-      const startedAt = performance.now();
-      const result = await analyzeSentence(sentence);
-      const elapsedMs = performance.now() - startedAt;
-
-      setAnalysisSummary({
-        elapsedMs: Math.round(elapsedMs),
-        sourceTextMatches: result.text === sentence,
-        resolvedSpanCount:
-          result.resolvedSpans?.length ?? 0,
-        coverageComplete:
-          result.coverage?.complete ?? null,
-        kwjaAlignmentComplete:
-          result.coverage?.kwjaAlignmentComplete ??
-          null,
-        unresolvedSpanCount:
-          result.coverage?.unresolvedSpanCount ??
-          null,
-        diagnosticCount:
-          result.diagnostics?.length ?? 0,
-        topLevelKeys: Object.keys(result).sort(),
-        roleCounts: countRoles(
-          result.resolvedSpans ?? []
-        )
-      });
-
-      setStatus('analysis received');
-    } catch (caught) {
-      setAnalysisSummary(null);
-      setStatus('error');
-
-      const validationErrors =
-        caught?.details?.validationErrors;
-
-      setError(
-        validationErrors?.length
-          ? `${caught.message}\n${validationErrors.join(
-              '\n'
-            )}`
-          : caught?.message ?? String(caught)
+      setConnectionStatus('unavailable');
+      setConnectionError(
+        error?.message ?? String(error)
       );
     }
   }
 
+  function clearCache() {
+    onClearShadowCache?.();
+  }
+
   return (
-    <details className="debug-nested">
-      <summary>JP Analyzer integration — Phase 1</summary>
+    <details className="debug-nested" open>
+      <summary>JP Analyzer shadow mode — Phase 2</summary>
 
       <div className="debug-empty">
-        Diagnostic only. Kuromoji remains responsible for
-        visible reader colouring, comprehension and New
-        Words.
+        JP Analyzer runs automatically for the active
+        sentence. Kuromoji still controls all visible
+        colouring, comprehension and New Words.
       </div>
 
       <div className="dictionary-import-row">
@@ -114,7 +72,7 @@ export default function JpAnalyzerIntegrationPanel({
           type="button"
           className="secondary"
           onClick={checkConnection}
-          disabled={status === 'checking'}
+          disabled={connectionStatus === 'checking'}
         >
           Check analyzer
         </button>
@@ -122,114 +80,115 @@ export default function JpAnalyzerIntegrationPanel({
         <button
           type="button"
           className="secondary"
-          onClick={inspectCurrentSentence}
-          disabled={
-            !sentence.trim() ||
-            status === 'analyzing'
-          }
+          onClick={clearCache}
         >
-          Inspect current sentence
+          Clear analyzer shadow cache
         </button>
       </div>
 
-      <div className="debug-kv-list">
-        <DebugValue label="Status" value={status} />
-
-        <DebugValue
-          label="Health"
-          value={
-            health
-              ? JSON.stringify(health)
-              : '-'
-          }
+      <div className="debug-summary-grid">
+        <MiniValue
+          label="Shadow status"
+          value={shadowState?.status ?? 'idle'}
         />
 
-        <DebugValue
-          label="Server"
-          value={serverInfo?.title || '-'}
+        <MiniValue
+          label="Result source"
+          value={shadowState?.source ?? '-'}
         />
 
-        <DebugValue
-          label="API version"
-          value={serverInfo?.version || '-'}
-        />
-
-        <DebugValue
-          label="Routes found"
-          value={serverInfo?.routes?.length ?? '-'}
-        />
-
-        <DebugValue
+        <MiniValue
           label="Request time"
           value={
-            analysisSummary
-              ? `${analysisSummary.elapsedMs} ms`
-              : '-'
+            shadowState?.elapsedMs == null
+              ? '-'
+              : `${shadowState.elapsedMs} ms`
           }
         />
 
-        <DebugValue
-          label="Source text matches"
-          value={
-            analysisSummary
-              ? String(
-                  analysisSummary.sourceTextMatches
-                )
-              : '-'
-          }
-        />
-
-        <DebugValue
+        <MiniValue
           label="Resolved spans"
-          value={
-            analysisSummary?.resolvedSpanCount ?? '-'
-          }
+          value={result?.resolvedSpans?.length ?? '-'}
         />
 
-        <DebugValue
-          label="Coverage complete"
+        <MiniValue
+          label="Coverage"
           value={
-            analysisSummary
+            result
               ? String(
-                  analysisSummary.coverageComplete
+                  result.coverage?.complete ?? false
                 )
               : '-'
           }
         />
 
-        <DebugValue
+        <MiniValue
           label="KWJA alignment"
           value={
-            analysisSummary
+            result
               ? String(
-                  analysisSummary
-                    .kwjaAlignmentComplete
+                  result.coverage
+                    ?.kwjaAlignmentComplete ?? false
                 )
               : '-'
           }
         />
 
-        <DebugValue
-          label="Unresolved spans"
+        <MiniValue
+          label="Unresolved"
           value={
-            analysisSummary
-              ?.unresolvedSpanCount ?? '-'
+            result
+              ? result.coverage
+                  ?.unresolvedSpanCount ?? '-'
+              : '-'
           }
         />
 
-        <DebugValue
+        <MiniValue
           label="Diagnostics"
           value={
-            analysisSummary?.diagnosticCount ?? '-'
+            result
+              ? result.diagnostics?.length ?? 0
+              : '-'
           }
         />
       </div>
 
-      {serverInfo?.routes?.length > 0 && (
-        <details className="debug-nested">
-          <summary>
-            Analyzer routes ({serverInfo.routes.length})
-          </summary>
+      <details className="debug-nested">
+        <summary>Connection details</summary>
+
+        <div className="debug-kv-list">
+          <DebugValue
+            label="Connection"
+            value={connectionStatus}
+          />
+
+          <DebugValue
+            label="Health"
+            value={
+              health
+                ? JSON.stringify(health)
+                : '-'
+            }
+          />
+
+          <DebugValue
+            label="Server"
+            value={serverInfo?.title || '-'}
+          />
+
+          <DebugValue
+            label="API version"
+            value={serverInfo?.version || '-'}
+          />
+
+          <DebugValue
+            label="Routes"
+            value={serverInfo?.routes?.length ?? '-'}
+          />
+        </div>
+
+        {serverInfo?.routes?.length > 0 && (
           <pre>
             {JSON.stringify(
               serverInfo.routes,
@@ -237,43 +196,79 @@ export default function JpAnalyzerIntegrationPanel({
               2
             )}
           </pre>
-        </details>
+        )}
+
+        {connectionError && (
+          <pre>{connectionError}</pre>
+        )}
+      </details>
+
+      {result && (
+        <>
+          <details className="debug-nested" open>
+            <summary>Analyzer role counts</summary>
+            <pre>
+              {JSON.stringify(roleCounts, null, 2)}
+            </pre>
+          </details>
+
+          <details className="debug-nested">
+            <summary>Shadow validation</summary>
+
+            <div className="debug-kv-list">
+              <DebugValue
+                label="Source text matches"
+                value={String(
+                  result.text === sentence
+                )}
+              />
+
+              <DebugValue
+                label="Schema"
+                value={result.schemaVersion ?? '-'}
+              />
+
+              <DebugValue
+                label="Analyzer"
+                value={result.analyzerVersion ?? '-'}
+              />
+
+              <DebugValue
+                label="Engine"
+                value={result.engineVersion ?? '-'}
+              />
+
+              <DebugValue
+                label="Cache key"
+                value={
+                  shadowState?.cacheKey
+                    ? shadowState.cacheKey.slice(0, 16)
+                    : '-'
+                }
+              />
+            </div>
+          </details>
+        </>
       )}
 
-      {analysisSummary?.roleCounts && (
+      {analysisError && (
         <details className="debug-nested" open>
-          <summary>Analyzer role counts</summary>
+          <summary>Shadow analysis error</summary>
           <pre>
-            {JSON.stringify(
-              analysisSummary.roleCounts,
-              null,
-              2
-            )}
+            {formatError(analysisError)}
           </pre>
-        </details>
-      )}
-
-      {analysisSummary?.topLevelKeys?.length >
-        0 && (
-        <details className="debug-nested">
-          <summary>Response keys</summary>
-          <pre>
-            {JSON.stringify(
-              analysisSummary.topLevelKeys,
-              null,
-              2
-            )}
-          </pre>
-        </details>
-      )}
-
-      {error && (
-        <details className="debug-nested" open>
-          <summary>Integration error</summary>
-          <pre>{error}</pre>
         </details>
       )}
     </details>
+  );
+}
+
+function MiniValue({ label, value }) {
+  return (
+    <div className="debug-mini-card">
+      <span>{label}</span>
+      <strong>{String(value)}</strong>
+    </div>
   );
 }
 
@@ -295,4 +290,19 @@ function countRoles(spans) {
   }
 
   return counts;
+}
+
+function formatError(error) {
+  const parts = [
+    error?.message ?? String(error)
+  ];
+
+  const validationErrors =
+    error?.details?.validationErrors;
+
+  if (validationErrors?.length) {
+    parts.push(...validationErrors);
+  }
+
+  return parts.join('\n');
 }

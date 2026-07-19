@@ -6,6 +6,10 @@ import { buildCache, clearCache, getCacheSize, addKnownWord, addManualKnownWord,
 import { getFrequency, startLoadingGlobalFrequency } from '../lib/frequencyMap.js';
 import DictionaryDebugPanel from './DictionaryDebugPanel.jsx';
 import JpAnalyzerIntegrationPanel from './JpAnalyzerIntegrationPanel.jsx';
+import {
+  clearJpAnalyzerShadowCache,
+  useJpAnalyzerShadow
+} from '../lib/useJpAnalyzerShadow.js';
 
 /* ─── Constants ─── */
 const DEFAULT_STYLE = { fontSize: 30, lineHeight: 2.05, height: 620, fontFamily: 'mincho' };
@@ -361,7 +365,12 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   const isImage = currentItem?.type === 'illustration';
   const currentData = currentItem?.data;
   const cleanedTitle = cleanBookTitle(book.title);
-
+  const jpAnalyzerShadow = useJpAnalyzerShadow(
+  isText ? currentData?.plainText : '',
+  {
+    enabled: true
+  }
+);
   const comprehension = useMemo(() => {
     if (!isText) return null;
     const words = currentData?.comprehensionWords || currentData?.contentWords || [];
@@ -752,6 +761,10 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
               </details>
 <JpAnalyzerIntegrationPanel
   currentData={currentData}
+  shadowState={jpAnalyzerShadow}
+  onClearShadowCache={
+    clearJpAnalyzerShadowCache
+  }
 />
 
 <DictionaryDebugPanel
