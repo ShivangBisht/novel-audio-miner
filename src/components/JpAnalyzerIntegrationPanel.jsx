@@ -7,6 +7,8 @@ import {
 export default function JpAnalyzerIntegrationPanel({
   currentData,
   shadowState,
+  adaptedResult,
+  comparison,
   onClearShadowCache
 }) {
   const [connectionStatus, setConnectionStatus] =
@@ -152,8 +154,219 @@ export default function JpAnalyzerIntegrationPanel({
               : '-'
           }
         />
-      </div>
+      {adaptedResult && (
+  <details className="debug-nested" open>
+    <summary>
+      Analyzer reader adapter — Phase 3
+    </summary>
 
+    <div className="debug-summary-grid">
+      <MiniValue
+        label="Adapter valid"
+        value={String(
+          adaptedResult.valid ?? false
+        )}
+      />
+
+      <MiniValue
+        label="Reader words"
+        value={
+          adaptedResult.words?.length ?? 0
+        }
+      />
+
+      <MiniValue
+        label="Adapter errors"
+        value={
+          adaptedResult.errors?.length ?? 0
+        }
+      />
+
+      <MiniValue
+        label="Learning"
+        value={
+          adaptedResult.summary?.learning ?? '-'
+        }
+      />
+
+      <MiniValue
+        label="Names"
+        value={
+          adaptedResult.summary?.names ?? '-'
+        }
+      />
+
+      <MiniValue
+        label="Grammar"
+        value={
+          adaptedResult.summary?.grammar ?? '-'
+        }
+      />
+
+      <MiniValue
+        label="Numeric"
+        value={
+          adaptedResult.summary?.numeric ?? '-'
+        }
+      />
+
+      <MiniValue
+        label="Unresolved"
+        value={
+          adaptedResult.summary?.unresolved ?? '-'
+        }
+      />
+    </div>
+
+    {adaptedResult.errors?.length > 0 && (
+      <pre>
+        {adaptedResult.errors.join('\n')}
+      </pre>
+    )}
+  </details>
+)}
+{comparison && (
+  <details className="debug-nested" open>
+    <summary>
+      Kuromoji vs JP Analyzer comparison
+    </summary>
+
+    <div className="debug-summary-grid">
+      <MiniValue
+        label="Range agreement"
+        value={`${(
+          comparison.exactRangeAgreement * 100
+        ).toFixed(1)}%`}
+      />
+
+      <MiniValue
+        label="Exact boundaries"
+        value={
+          comparison.exactRangeMatchCount
+        }
+      />
+
+      <MiniValue
+        label="Category differences"
+        value={
+          comparison.categoryDifferenceCount
+        }
+      />
+
+      <MiniValue
+        label="Headword differences"
+        value={
+          comparison.headwordDifferenceCount
+        }
+      />
+
+      <MiniValue
+        label="Kuromoji-only"
+        value={comparison.kuromojiOnlyCount}
+      />
+
+      <MiniValue
+        label="Analyzer-only"
+        value={comparison.analyzerOnlyCount}
+      />
+
+      <MiniValue
+        label="Kuromoji range errors"
+        value={comparison.kuromojiRangeErrors}
+      />
+
+      <MiniValue
+        label="Analyzer range errors"
+        value={comparison.analyzerRangeErrors}
+      />
+    </div>
+
+    <details className="debug-nested">
+      <summary>Model summaries</summary>
+
+      <pre>
+        {JSON.stringify(
+          {
+            kuromoji: comparison.kuromoji,
+            analyzer: comparison.analyzer
+          },
+          null,
+          2
+        )}
+      </pre>
+    </details>
+
+    {comparison.categoryDifferences.length > 0 && (
+      <details className="debug-nested">
+        <summary>
+          Category differences (
+          {comparison.categoryDifferences.length})
+        </summary>
+
+        <pre>
+          {JSON.stringify(
+            comparison.categoryDifferences,
+            null,
+            2
+          )}
+        </pre>
+      </details>
+    )}
+
+    {comparison.headwordDifferences.length > 0 && (
+      <details className="debug-nested">
+        <summary>
+          Frequency/headword key differences (
+          {comparison.headwordDifferences.length})
+        </summary>
+
+        <pre>
+          {JSON.stringify(
+            comparison.headwordDifferences,
+            null,
+            2
+          )}
+        </pre>
+      </details>
+    )}
+
+    {comparison.kuromojiOnly.length > 0 && (
+      <details className="debug-nested">
+        <summary>
+          Kuromoji-only ranges (
+          {comparison.kuromojiOnly.length})
+        </summary>
+
+        <pre>
+          {JSON.stringify(
+            comparison.kuromojiOnly,
+            null,
+            2
+          )}
+        </pre>
+      </details>
+    )}
+
+    {comparison.analyzerOnly.length > 0 && (
+      <details className="debug-nested">
+        <summary>
+          Analyzer-only ranges (
+          {comparison.analyzerOnly.length})
+        </summary>
+
+        <pre>
+          {JSON.stringify(
+            comparison.analyzerOnly,
+            null,
+            2
+          )}
+        </pre>
+      </details>
+    )}
+  </details>
+)}
+      </div>
+     
       <details className="debug-nested">
         <summary>Connection details</summary>
 

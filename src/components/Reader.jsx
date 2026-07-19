@@ -10,6 +10,8 @@ import {
   clearJpAnalyzerShadowCache,
   useJpAnalyzerShadow
 } from '../lib/useJpAnalyzerShadow.js';
+import { adaptCompactAnalysisToReaderWords } from '../lib/analyzerWordAdapter.js';
+import { compareReaderWordModels } from '../lib/analyzerShadowComparison.js';
 
 /* ─── Constants ─── */
 const DEFAULT_STYLE = { fontSize: 30, lineHeight: 2.05, height: 620, fontFamily: 'mincho' };
@@ -371,6 +373,53 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     enabled: true
   }
 );
+  const jpAnalyzerAdapted = useMemo(() => {
+  if (
+    !isText ||
+    !currentData?.plainText ||
+    !jpAnalyzerShadow?.result
+  ) {
+    return {
+      valid: false,
+      errors: [],
+      words: [],
+      summary: null
+    };
+  }
+
+  return adaptCompactAnalysisToReaderWords(
+    jpAnalyzerShadow.result,
+    currentData.plainText
+  );
+}, [
+  isText,
+  currentData?.plainText,
+  jpAnalyzerShadow?.result
+]);
+  const jpAnalyzerComparison = useMemo(() => {
+  if (
+    !isText ||
+    !jpAnalyzerAdapted.valid
+  ) {
+    return null;
+  }
+
+  return compareReaderWordModels({
+    text: currentData?.plainText ?? '',
+    kuromojiWords:
+      currentData?.classifiedWords ??
+      currentData?.tokens ??
+      [],
+    analyzerWords:
+      jpAnalyzerAdapted.words
+  });
+}, [
+  isText,
+  currentData?.plainText,
+  currentData?.classifiedWords,
+  currentData?.tokens,
+  jpAnalyzerAdapted
+]);
   const comprehension = useMemo(() => {
     if (!isText) return null;
     const words = currentData?.comprehensionWords || currentData?.contentWords || [];
@@ -762,6 +811,8 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
 <JpAnalyzerIntegrationPanel
   currentData={currentData}
   shadowState={jpAnalyzerShadow}
+  adaptedResult={jpAnalyzerAdapted}
+  comparison={jpAnalyzerComparison}
   onClearShadowCache={
     clearJpAnalyzerShadowCache
   }
