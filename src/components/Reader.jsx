@@ -70,14 +70,18 @@ function isTokenKnownForLearning(tokenOrWord) {
 function getWordColorClass(wordOrToken) {
   const token = typeof wordOrToken === 'object' ? wordOrToken : null;
   const word = getTokenKnownKey(wordOrToken);
+
+  if (token?.colorRole === 'neutral') return '';
   if (token?.colorRole === 'name' || token?.tokenCategory === 'proper-noun') return 'word-name';
   if (token?.colorRole === 'numeric' || token?.tokenCategory === 'numeric') return 'word-numeric';
-  if (token?.colorRole === 'grammar' || token?.tokenCategory === 'grammar' || token?.tokenCategory === 'ignored') return 'word-grammar';
+  if (token?.colorRole === 'grammar' || token?.tokenCategory === 'grammar') return 'word-grammar';
+  if (token?.colorRole === 'unknown' || token?.tokenCategory === 'unresolved') return 'word-unknown word-freq-unlisted';
+  if (token?.tokenCategory === 'ignored') return 'word-grammar';
   if (!word) return 'word-unknown word-freq-unlisted';
   if (isKnownWord(word)) return 'word-known';
   const freq = getFrequency(word);
   if (freq && freq.category) return `word-unknown word-freq-${freq.category}`;
-  return 'word-unknown word-freq-unlisted';       // grey
+  return 'word-unknown word-freq-unlisted';
 }
 
 
@@ -158,11 +162,24 @@ function downloadJsonFile(filename, data) {
 
 /* ─── Stable token range colouriser ─── */
 function normalizeTokenList(tokens) {
-  return (tokens || [])
+  const normalized = (tokens || [])
     .filter(token => token?.surface)
-    .map(token => ({ ...token, surface: String(token.surface || ''), dictionaryForm: String(token.dictionaryForm || token.surface || '') }))
-    .filter(token => token.surface.length > 0)
-    .sort((a, b) => b.surface.length - a.surface.length);
+    .map(token => ({
+      ...token,
+      surface: String(token.surface || ''),
+      dictionaryForm: String(token.dictionaryForm || token.surface || '')
+    }))
+    .filter(token => token.surface.length > 0);
+
+  const allHaveOffsets = normalized.length > 0 && normalized.every(
+    token => Number.isInteger(token.start) && Number.isInteger(token.end)
+  );
+
+  if (allHaveOffsets) {
+    return normalized.sort((a, b) => a.start - b.start || a.end - b.end);
+  }
+
+  return normalized.sort((a, b) => b.surface.length - a.surface.length);
 }
 
 function buildTokenRangesFromText(text, tokens) {
@@ -170,7 +187,32 @@ function buildTokenRangesFromText(text, tokens) {
   const normalized = normalizeTokenList(tokens);
   const ranges = [];
   const occupied = new Array(source.length).fill(false);
+
   for (const token of normalized) {
+    const exactStart = Number.isInteger(token.start) ? token.start : null;
+    const exactEnd = Number.isInteger(token.end) ? token.end : null;
+    const hasValidExactRange =
+      exactStart !== null &&
+      exactEnd !== null &&
+      exactStart >= 0 &&
+      exactEnd > exactStart &&
+      exactEnd <= source.length &&
+      source.slice(exactStart, exactEnd) === token.surface;
+
+    if (hasValidExactRange) {
+      const overlaps = occupied.slice(exactStart, exactEnd).some(Boolean);
+      if (!overlaps) {
+        for (let i = exactStart; i < exactEnd; i++) occupied[i] = true;
+        ranges.push({
+          start: exactStart,
+          end: exactEnd,
+          className: getWordColorClass(token),
+          surface: token.surface
+        });
+        continue;
+      }
+    }
+
     let searchFrom = 0;
     while (searchFrom < source.length) {
       const start = source.indexOf(token.surface, searchFrom);
@@ -185,6 +227,7 @@ function buildTokenRangesFromText(text, tokens) {
       searchFrom = start + 1;
     }
   }
+
   return ranges.sort((a, b) => a.start - b.start || b.end - a.end);
 }
 
@@ -344,6 +387,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   const [sessionToken, setSessionToken] = useState(() => { try { return localStorage.getItem('nadeshiko_session_token') || ''; } catch { return ''; } });
   const [forceTts, setForceTts] = useState(() => { try { return localStorage.getItem('force_tts') === 'true'; } catch { return false; } });
   const [debugMode, setDebugMode] = useState(saved.debugMode ?? false);
+  const [useJpAnalyzerColorPreview, setUseJpAnalyzerColorPreview] = useState(false);
   const [miningDebug, setMiningDebug] = useState(null);
   const [unblurredImages, setUnblurredImages] = useState(new Set());
   const [goInput, setGoInput] = useState('');
@@ -420,6 +464,21 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   currentData?.tokens,
   jpAnalyzerAdapted
 ]);
+  const canUseJpAnalyzerPreview =
+    debugMode &&
+    useJpAnalyzerColorPreview &&
+    jpAnalyzerShadow?.status === 'ready' &&
+    jpAnalyzerAdapted?.valid === true &&
+    jpAnalyzerAdapted.words.length > 0;
+  const activeDisplayWords = canUseJpAnalyzerPreview
+    ? jpAnalyzerAdapted.words
+    : (currentData?.displayWords || currentData?.contentWords || []);
+  const activeColorSource = canUseJpAnalyzerPreview ? 'jp-analyzer' : 'kuromoji';
+  const jpAnalyzerPreviewAvailable =
+    jpAnalyzerShadow?.status === 'ready' &&
+    jpAnalyzerAdapted?.valid === true &&
+    jpAnalyzerAdapted.words.length > 0;
+
   const comprehension = useMemo(() => {
     if (!isText) return null;
     const words = currentData?.comprehensionWords || currentData?.contentWords || [];
@@ -460,6 +519,9 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   const currentChapterImages = chapterImageLists?.[currentChapterIdx] || [];
 
   useEffect(() => { if (itemIndex >= totalScenes) setItemIndex(Math.max(0, totalScenes - 1)); }, [totalScenes, itemIndex]);
+  useEffect(() => {
+    if (!debugMode) setUseJpAnalyzerColorPreview(false);
+  }, [debugMode]);
   useEffect(() => { saveProgress(book.id, { itemIndex, showFurigana, verticalMode, readerStyle, sidebarOpen, noteType, fields, debugMode }); }, [book.id, itemIndex, showFurigana, verticalMode, readerStyle, sidebarOpen, noteType, fields, debugMode]);
   useEffect(() => {
     function key(event) {
@@ -808,6 +870,30 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
                   <div className="debug-mini-card"><span>Unknown</span><strong>{unknownWords.length}</strong></div>
                 </div>
               </details>
+<details className="debug-nested" open>
+  <summary>Visual colour source - Phase 4</summary>
+  <div className="debug-empty">
+    This changes only visible sentence colouring. Comprehension, New Words,
+    known-word handling and mining still use Kuromoji.
+  </div>
+  <div className="debug-summary-grid">
+    <div className="debug-mini-card"><span>Visible source</span><strong>{activeColorSource}</strong></div>
+    <div className="debug-mini-card"><span>Analyzer available</span><strong>{String(jpAnalyzerPreviewAvailable)}</strong></div>
+    <div className="debug-mini-card"><span>Fallback</span><strong>kuromoji</strong></div>
+  </div>
+  <div className="dictionary-import-row">
+    <button type="button" className="secondary" onClick={() => setUseJpAnalyzerColorPreview(false)} disabled={!useJpAnalyzerColorPreview}>
+      Show Kuromoji colours
+    </button>
+    <button type="button" className="secondary" onClick={() => setUseJpAnalyzerColorPreview(true)} disabled={!jpAnalyzerPreviewAvailable}>
+      Preview JP Analyzer colours
+    </button>
+  </div>
+  {useJpAnalyzerColorPreview && !jpAnalyzerPreviewAvailable && (
+    <div className="debug-empty">Analyzer preview is unavailable; Kuromoji fallback is active.</div>
+  )}
+</details>
+
 <JpAnalyzerIntegrationPanel
   currentData={currentData}
   shadowState={jpAnalyzerShadow}
@@ -898,7 +984,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
                 {renderStableSentence({
                   htmlText: currentData.htmlText,
                   plainText: currentData.plainText,
-                  tokens: currentData.displayWords || currentData.contentWords,
+                  tokens: activeDisplayWords,
                   showFurigana,
                   verticalMode
                 })}
