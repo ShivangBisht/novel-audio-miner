@@ -5,6 +5,7 @@ import { autoEnrichWordWithFallback, generateVoicevoxAudio } from '../lib/enrich
 import { buildCache, clearCache, getCacheSize, addKnownWord, addManualKnownWord, removeManualKnownWord, isManualKnownWord, isKnownWord } from '../lib/wordCache.js';
 import { getFrequency, startLoadingGlobalFrequency } from '../lib/frequencyMap.js';
 import DictionaryDebugPanel from './DictionaryDebugPanel.jsx';
+import JpAnalyzerIntegrationPanel from './JpAnalyzerIntegrationPanel.jsx';
 
 /* ─── Constants ─── */
 const DEFAULT_STYLE = { fontSize: 30, lineHeight: 2.05, height: 620, fontFamily: 'mincho' };
@@ -749,9 +750,14 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
                   <div className="debug-mini-card"><span>Unknown</span><strong>{unknownWords.length}</strong></div>
                 </div>
               </details>
+<JpAnalyzerIntegrationPanel
+  currentData={currentData}
+/>
 
-              <DictionaryDebugPanel selectedText={selectedText} currentData={currentData} />
-
+<DictionaryDebugPanel
+  selectedText={selectedText}
+  currentData={currentData}
+/>
               <details>
                 <summary>Token summary</summary>
                 <div className="debug-summary-grid">

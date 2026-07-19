@@ -6,7 +6,8 @@ const PORT = 5173;
 
 const PROXY_TARGETS = {
   nadeshiko: 'https://nadeshiko.co',
-  voicevox: 'http://localhost:50021'
+  voicevox: 'http://localhost:50021',
+  jpAnalyzer: 'http://127.0.0.1:8766'
 };
 
 function stripProxyPrefix(prefix) {
@@ -28,6 +29,11 @@ export default defineConfig({
         target: PROXY_TARGETS.voicevox,
         changeOrigin: true,
         rewrite: stripProxyPrefix(/^\/api\/voicevox/)
+      },
+      '/api/jp-analyzer': {
+        target: PROXY_TARGETS.jpAnalyzer,
+        changeOrigin: true,
+        rewrite: stripProxyPrefix(/^\/api\/jp-analyzer/)
       }
     }
   }
