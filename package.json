@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test:reader-spans": "node scripts/test-analyzer-reader-spans.mjs",
     "test:color-sources": "node scripts/test-color-sources.mjs",
-    "test:phase3": "npm run test:reader-spans && npm run test:color-sources"
+    "test:phase3": "npm run test:reader-spans && npm run test:color-sources && npm run test:analyzer-cache",
+    "test:analyzer-cache": "node scripts/test-analyzer-cache.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.3",

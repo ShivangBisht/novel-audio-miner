@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import { ANALYZER_CACHE_SCHEMA_VERSION, createAnalyzerCacheIdentity, createAnalyzerCacheRecord, normalizeAnalyzerMetadata, validateAnalyzerCacheRecord } from '../src/lib/analyzerCacheIdentity.js';
+const text='少年。', meta={analyzerVersion:'11.9.0-correction-aware-cache-contract',readerSpanSchemaVersion:'1.1',correctionRevision:'rev-a'};
+const result={...meta,text,readerSpans:[{start:0,end:2,surface:'少年',displayRole:'lexical',knownLookupKey:'少年',frequencyLookupKey:'少年',countsForComprehension:true,showInNewWords:true,eligibleForMining:true},{start:2,end:3,surface:'。',displayRole:'punctuation',knownLookupKey:null,frequencyLookupKey:null,countsForComprehension:false,showInNewWords:false,eligibleForMining:false}]};
+assert.equal(normalizeAnalyzerMetadata(meta).valid,true);
+const identity=createAnalyzerCacheIdentity('hash-a',meta); assert.ok(identity.includes('rev-a'));
+const record=createAnalyzerCacheRecord(result,'hash-a',meta,new Date('2026-07-21T00:00:00Z'));
+assert.equal(record.cacheSchemaVersion,ANALYZER_CACHE_SCHEMA_VERSION);
+assert.equal(validateAnalyzerCacheRecord(record,text,'hash-a',meta).valid,true);
+assert.equal(validateAnalyzerCacheRecord(record,text,'hash-a',{...meta,correctionRevision:'rev-b'}).reason,'cache-identity-mismatch');
+assert.equal(validateAnalyzerCacheRecord({...record,readerSpans:[{...record.readerSpans[0],end:1}]},text,'hash-a',meta).reason,'reader-spans-invalid');
+console.log('correction-aware analyzer cache tests passed');
