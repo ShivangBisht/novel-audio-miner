@@ -13,6 +13,11 @@ import {
 import { adaptCompactAnalysisToReaderWords } from '../lib/analyzerWordAdapter.js';
 import { adaptReaderSpansForRendering } from '../lib/analyzerReaderSpanAdapter.js';
 import { compareReaderWordModels } from '../lib/analyzerShadowComparison.js';
+import {
+  COLOR_SOURCES,
+  normalizeColorSource,
+  resolveVisibleColourSource
+} from '../lib/colorSource.js';
 
 /* ─── Constants ─── */
 const DEFAULT_STYLE = { fontSize: 30, lineHeight: 2.05, height: 620, fontFamily: 'mincho' };
@@ -420,7 +425,9 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   const [sessionToken, setSessionToken] = useState(() => { try { return localStorage.getItem('nadeshiko_session_token') || ''; } catch { return ''; } });
   const [forceTts, setForceTts] = useState(() => { try { return localStorage.getItem('force_tts') === 'true'; } catch { return false; } });
   const [debugMode, setDebugMode] = useState(saved.debugMode ?? false);
-  const [useJpAnalyzerColorPreview, setUseJpAnalyzerColorPreview] = useState(false);
+  const [colorSource, setColorSource] = useState(() =>
+    normalizeColorSource(saved.colorSource)
+  );
   const [miningDebug, setMiningDebug] = useState(null);
   const [unblurredImages, setUnblurredImages] = useState(new Set());
   const [goInput, setGoInput] = useState('');
@@ -517,15 +524,18 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     jpAnalyzerReader.valid === true &&
     jpAnalyzerReader.words.length > 0;
 
-  // Explicit preview ownership: an invalid/unavailable analyzer preview is
-  // neutral plain text. It never silently changes segmentation to Kuromoji.
-  const activeDisplayWords = useJpAnalyzerColorPreview
-    ? (jpAnalyzerPreviewAvailable ? jpAnalyzerReader.words : [])
-    : (currentData?.displayWords || currentData?.contentWords || []);
+  const colourSourceResolution = resolveVisibleColourSource({
+    requestedSource: colorSource,
+    analyzerReady: jpAnalyzerPreviewAvailable,
+    analyzerWords: jpAnalyzerReader.words,
+    legacyWords:
+      currentData?.displayWords || currentData?.contentWords || []
+  });
 
-  const activeColorSource = useJpAnalyzerColorPreview
-    ? (jpAnalyzerPreviewAvailable ? 'jp-analyzer-reader-spans' : 'neutral')
-    : 'kuromoji';
+  const activeDisplayWords = colourSourceResolution.words;
+  const activeColorSource = colourSourceResolution.activeSource;
+  const analyzerNeutralFallback =
+    colourSourceResolution.neutralFallback;
 
   const comprehension = useMemo(() => {
     if (!isText) return null;
@@ -568,9 +578,29 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
 
   useEffect(() => { if (itemIndex >= totalScenes) setItemIndex(Math.max(0, totalScenes - 1)); }, [totalScenes, itemIndex]);
   useEffect(() => {
-    if (!debugMode) setUseJpAnalyzerColorPreview(false);
-  }, [debugMode]);
-  useEffect(() => { saveProgress(book.id, { itemIndex, showFurigana, verticalMode, readerStyle, sidebarOpen, noteType, fields, debugMode }); }, [book.id, itemIndex, showFurigana, verticalMode, readerStyle, sidebarOpen, noteType, fields, debugMode]);
+    saveProgress(book.id, {
+      itemIndex,
+      showFurigana,
+      verticalMode,
+      readerStyle,
+      sidebarOpen,
+      noteType,
+      fields,
+      debugMode,
+      colorSource
+    });
+  }, [
+    book.id,
+    itemIndex,
+    showFurigana,
+    verticalMode,
+    readerStyle,
+    sidebarOpen,
+    noteType,
+    fields,
+    debugMode,
+    colorSource
+  ]);
   useEffect(() => {
     function key(event) {
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
@@ -890,6 +920,22 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
             <summary>Advanced</summary>
             <div style={{ display: 'grid', gap: '8px', marginTop: '8px' }}>
               <label style={{ fontSize: '11px', color: 'var(--muted)' }}>Note type: <input value={noteType} onChange={e => setNoteType(e.target.value)} /></label>
+              <label style={{ fontSize: '11px', color: 'var(--muted)', display: 'grid', gap: '4px' }}>
+                Colour source:
+                <select
+                  value={colorSource}
+                  onChange={event => setColorSource(
+                    normalizeColorSource(event.target.value)
+                  )}
+                >
+                  <option value={COLOR_SOURCES.JP_ANALYZER}>JP Analyzer</option>
+                  <option value={COLOR_SOURCES.LEGACY_KUROMOJI}>Legacy Kuromoji</option>
+                  <option value={COLOR_SOURCES.PLAIN_TEXT}>Plain text</option>
+                </select>
+                <span style={{ fontSize: '10px' }}>
+                  JP Analyzer uses authoritative readerSpans. Invalid analyzer output is shown as neutral text.
+                </span>
+              </label>
               <label style={{ fontSize: '11px', color: 'var(--muted)', display: 'grid', gap: '4px' }}>Session Token: <input value={sessionToken} onChange={e => handleSaveSessionToken(e.target.value)} placeholder="Paste __Secure-nadeshiko.session_token" /><span style={{ fontSize: '10px' }}>F12 → Application → Cookies → nadeshiko.co</span></label>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                 <button className="secondary" onClick={async () => { try { await buildCache(ankiRequest); setCacheVersion(v => v + 1); } catch {} }} style={{ fontSize: '10px', padding: '4px 8px' }}>Rebuild Cache</button>
@@ -919,26 +965,21 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
                 </div>
               </details>
 <details className="debug-nested" open>
-  <summary>Visual colour source - Phase 4</summary>
+  <summary>Explicit colour source — Phase 3B</summary>
   <div className="debug-empty">
-    This changes only visible sentence colouring. Comprehension, New Words,
-    known-word handling and mining still use Kuromoji.
+    The selected source changes visible colouring only. Comprehension,
+    New Words, known-word handling and mining still use Kuromoji.
   </div>
   <div className="debug-summary-grid">
-    <div className="debug-mini-card"><span>Visible source</span><strong>{activeColorSource}</strong></div>
+    <div className="debug-mini-card"><span>Requested source</span><strong>{colorSource}</strong></div>
+    <div className="debug-mini-card"><span>Active source</span><strong>{activeColorSource}</strong></div>
     <div className="debug-mini-card"><span>Analyzer available</span><strong>{String(jpAnalyzerPreviewAvailable)}</strong></div>
-    <div className="debug-mini-card"><span>Invalid preview</span><strong>neutral text</strong></div>
+    <div className="debug-mini-card"><span>Neutral fallback</span><strong>{String(analyzerNeutralFallback)}</strong></div>
   </div>
-  <div className="dictionary-import-row">
-    <button type="button" className="secondary" onClick={() => setUseJpAnalyzerColorPreview(false)} disabled={!useJpAnalyzerColorPreview}>
-      Show Kuromoji colours
-    </button>
-    <button type="button" className="secondary" onClick={() => setUseJpAnalyzerColorPreview(true)} disabled={!jpAnalyzerPreviewAvailable}>
-      Preview JP Analyzer colours
-    </button>
-  </div>
-  {useJpAnalyzerColorPreview && !jpAnalyzerPreviewAvailable && (
-    <div className="debug-empty">Analyzer readerSpans are unavailable or invalid; neutral text is shown.</div>
+  {analyzerNeutralFallback && (
+    <div className="debug-empty">
+      JP Analyzer was selected, but readerSpans are unavailable or invalid. Neutral text is shown; Kuromoji was not selected automatically.
+    </div>
   )}
 </details>
 
