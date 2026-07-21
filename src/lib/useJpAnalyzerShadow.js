@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { analyzeSentence } from './jpAnalyzerClient.js';
 
-const CACHE_PREFIX = 'jp-analyzer-shadow-v1:';
+const CACHE_PREFIX = 'jp-analyzer-reader-spans-v2:';
 const MAX_PERSISTED_ENTRIES = 100;
 
 const memoryCache = new Map();
@@ -41,6 +41,14 @@ function createCacheRecord(result) {
     analyzerVersion: result.analyzerVersion ?? null,
     engineVersion: result.engineVersion ?? null,
     text: result.text,
+    readerSpanSchemaVersion:
+      result.readerSpanSchemaVersion ?? null,
+    readerCandidateSchemaVersion:
+      result.readerCandidateSchemaVersion ?? null,
+    readerSpans: result.readerSpans ?? [],
+    readerSelection: result.readerSelection ?? null,
+    appliedReaderCorrections:
+      result.appliedReaderCorrections ?? [],
     resolvedSpans: result.resolvedSpans ?? [],
     coverage: result.coverage ?? null,
     diagnostics: result.diagnostics ?? []
@@ -60,6 +68,7 @@ function readPersistedResult(hash, expectedText) {
     if (
       !record ||
       record.text !== expectedText ||
+      !Array.isArray(record.readerSpans) ||
       !Array.isArray(record.resolvedSpans)
     ) {
       localStorage.removeItem(getStorageKey(hash));

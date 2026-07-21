@@ -11,6 +11,7 @@ import {
   useJpAnalyzerShadow
 } from '../lib/useJpAnalyzerShadow.js';
 import { adaptCompactAnalysisToReaderWords } from '../lib/analyzerWordAdapter.js';
+import { adaptReaderSpansForRendering } from '../lib/analyzerReaderSpanAdapter.js';
 import { compareReaderWordModels } from '../lib/analyzerShadowComparison.js';
 
 /* ─── Constants ─── */
@@ -60,7 +61,12 @@ function wrapIndividualDashes(node) {
 /* ─── Word colour logic ─── */
 function getTokenKnownKey(tokenOrWord) {
   if (typeof tokenOrWord === 'string') return tokenOrWord;
-  return tokenOrWord?.dictionaryForm || tokenOrWord?.surface || '';
+  return tokenOrWord?.knownLookupKey || tokenOrWord?.dictionaryForm || tokenOrWord?.surface || '';
+}
+
+function getTokenFrequencyKey(tokenOrWord) {
+  if (typeof tokenOrWord === 'string') return tokenOrWord;
+  return tokenOrWord?.frequencyLookupKey || getTokenKnownKey(tokenOrWord);
 }
 
 function isTokenKnownForLearning(tokenOrWord) {
@@ -69,8 +75,32 @@ function isTokenKnownForLearning(tokenOrWord) {
 
 function getWordColorClass(wordOrToken) {
   const token = typeof wordOrToken === 'object' ? wordOrToken : null;
-  const word = getTokenKnownKey(wordOrToken);
 
+  if (token?.analysisSource === 'jp-analyzer-reader-spans') {
+    const role = token.displayRole;
+
+    if (role === 'punctuation' || role === 'unresolved') return '';
+    if (role === 'name') return 'word-name';
+    if (role === 'function' || role === 'learnable-grammar') return 'word-grammar';
+
+    if (role === 'lexical' || role === 'lexical-compound') {
+      const knownKey = getTokenKnownKey(token);
+      const frequencyKey = getTokenFrequencyKey(token);
+
+      if (knownKey && isKnownWord(knownKey)) return 'word-known';
+      if (!frequencyKey) return 'word-unknown word-freq-unlisted';
+
+      const frequency = getFrequency(frequencyKey);
+      if (frequency?.category) {
+        return `word-unknown word-freq-${frequency.category}`;
+      }
+      return 'word-unknown word-freq-unlisted';
+    }
+
+    return '';
+  }
+
+  const word = getTokenKnownKey(wordOrToken);
   if (token?.colorRole === 'neutral') return '';
   if (token?.colorRole === 'name' || token?.tokenCategory === 'proper-noun') return 'word-name';
   if (token?.colorRole === 'numeric' || token?.tokenCategory === 'numeric') return 'word-numeric';
@@ -167,7 +197,10 @@ function normalizeTokenList(tokens) {
     .map(token => ({
       ...token,
       surface: String(token.surface || ''),
-      dictionaryForm: String(token.dictionaryForm || token.surface || '')
+      dictionaryForm:
+        token.analysisSource === 'jp-analyzer-reader-spans'
+          ? String(token.dictionaryForm ?? '')
+          : String(token.dictionaryForm || token.surface || '')
     }))
     .filter(token => token.surface.length > 0);
 
@@ -417,67 +450,82 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     enabled: true
   }
 );
-  const jpAnalyzerAdapted = useMemo(() => {
-  if (
-    !isText ||
-    !currentData?.plainText ||
-    !jpAnalyzerShadow?.result
-  ) {
-    return {
-      valid: false,
-      errors: [],
-      words: [],
-      summary: null
-    };
-  }
+  const jpAnalyzerLegacyAdapted = useMemo(() => {
+    if (
+      !isText ||
+      !currentData?.plainText ||
+      !jpAnalyzerShadow?.result
+    ) {
+      return { valid: false, errors: [], words: [], summary: null };
+    }
 
-  return adaptCompactAnalysisToReaderWords(
-    jpAnalyzerShadow.result,
-    currentData.plainText
-  );
-}, [
-  isText,
-  currentData?.plainText,
-  jpAnalyzerShadow?.result
-]);
+    return adaptCompactAnalysisToReaderWords(
+      jpAnalyzerShadow.result,
+      currentData.plainText
+    );
+  }, [
+    isText,
+    currentData?.plainText,
+    jpAnalyzerShadow?.result
+  ]);
+
+  const jpAnalyzerReader = useMemo(() => {
+    if (
+      !isText ||
+      !currentData?.plainText ||
+      !jpAnalyzerShadow?.result
+    ) {
+      return {
+        valid: false,
+        errors: [],
+        words: [],
+        schemaVersion: '',
+        summary: null,
+        correctionAware: false
+      };
+    }
+
+    return adaptReaderSpansForRendering(
+      jpAnalyzerShadow.result,
+      currentData.plainText
+    );
+  }, [
+    isText,
+    currentData?.plainText,
+    jpAnalyzerShadow?.result
+  ]);
+
   const jpAnalyzerComparison = useMemo(() => {
-  if (
-    !isText ||
-    !jpAnalyzerAdapted.valid
-  ) {
-    return null;
-  }
+    if (!isText || !jpAnalyzerLegacyAdapted.valid) return null;
 
-  return compareReaderWordModels({
-    text: currentData?.plainText ?? '',
-    kuromojiWords:
-      currentData?.classifiedWords ??
-      currentData?.tokens ??
-      [],
-    analyzerWords:
-      jpAnalyzerAdapted.words
-  });
-}, [
-  isText,
-  currentData?.plainText,
-  currentData?.classifiedWords,
-  currentData?.tokens,
-  jpAnalyzerAdapted
-]);
-  const canUseJpAnalyzerPreview =
-    debugMode &&
-    useJpAnalyzerColorPreview &&
-    jpAnalyzerShadow?.status === 'ready' &&
-    jpAnalyzerAdapted?.valid === true &&
-    jpAnalyzerAdapted.words.length > 0;
-  const activeDisplayWords = canUseJpAnalyzerPreview
-    ? jpAnalyzerAdapted.words
-    : (currentData?.displayWords || currentData?.contentWords || []);
-  const activeColorSource = canUseJpAnalyzerPreview ? 'jp-analyzer' : 'kuromoji';
+    return compareReaderWordModels({
+      text: currentData?.plainText ?? '',
+      kuromojiWords:
+        currentData?.classifiedWords ?? currentData?.tokens ?? [],
+      analyzerWords: jpAnalyzerLegacyAdapted.words
+    });
+  }, [
+    isText,
+    currentData?.plainText,
+    currentData?.classifiedWords,
+    currentData?.tokens,
+    jpAnalyzerLegacyAdapted
+  ]);
+
   const jpAnalyzerPreviewAvailable =
     jpAnalyzerShadow?.status === 'ready' &&
-    jpAnalyzerAdapted?.valid === true &&
-    jpAnalyzerAdapted.words.length > 0;
+    jpAnalyzerReader.valid === true &&
+    jpAnalyzerReader.words.length > 0;
+
+  // Explicit preview ownership: an invalid/unavailable analyzer preview is
+  // neutral plain text. It never silently changes segmentation to Kuromoji.
+  const activeDisplayWords = useJpAnalyzerColorPreview
+    ? (jpAnalyzerPreviewAvailable ? jpAnalyzerReader.words : [])
+    : (currentData?.displayWords || currentData?.contentWords || []);
+
+  const activeColorSource = useJpAnalyzerColorPreview
+    ? (jpAnalyzerPreviewAvailable ? 'jp-analyzer-reader-spans' : 'neutral')
+    : 'kuromoji';
 
   const comprehension = useMemo(() => {
     if (!isText) return null;
@@ -879,7 +927,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   <div className="debug-summary-grid">
     <div className="debug-mini-card"><span>Visible source</span><strong>{activeColorSource}</strong></div>
     <div className="debug-mini-card"><span>Analyzer available</span><strong>{String(jpAnalyzerPreviewAvailable)}</strong></div>
-    <div className="debug-mini-card"><span>Fallback</span><strong>kuromoji</strong></div>
+    <div className="debug-mini-card"><span>Invalid preview</span><strong>neutral text</strong></div>
   </div>
   <div className="dictionary-import-row">
     <button type="button" className="secondary" onClick={() => setUseJpAnalyzerColorPreview(false)} disabled={!useJpAnalyzerColorPreview}>
@@ -890,14 +938,14 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     </button>
   </div>
   {useJpAnalyzerColorPreview && !jpAnalyzerPreviewAvailable && (
-    <div className="debug-empty">Analyzer preview is unavailable; Kuromoji fallback is active.</div>
+    <div className="debug-empty">Analyzer readerSpans are unavailable or invalid; neutral text is shown.</div>
   )}
 </details>
 
 <JpAnalyzerIntegrationPanel
   currentData={currentData}
   shadowState={jpAnalyzerShadow}
-  adaptedResult={jpAnalyzerAdapted}
+  adaptedResult={jpAnalyzerReader}
   comparison={jpAnalyzerComparison}
   onClearShadowCache={
     clearJpAnalyzerShadowCache

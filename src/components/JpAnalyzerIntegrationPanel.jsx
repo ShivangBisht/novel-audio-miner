@@ -61,12 +61,12 @@ export default function JpAnalyzerIntegrationPanel({
 
   return (
     <details className="debug-nested" open>
-      <summary>JP Analyzer shadow mode — Phase 2</summary>
+      <summary>JP Analyzer readerSpans — Phase 3A</summary>
 
       <div className="debug-empty">
-        JP Analyzer runs automatically for the active
-        sentence. Kuromoji still controls all visible
-        colouring, comprehension and New Words.
+        JP Analyzer runs automatically for the active sentence.
+        The optional preview renders authoritative readerSpans.
+        Comprehension, New Words and mining remain on Kuromoji.
       </div>
 
       <div className="dictionary-import-row">
@@ -109,7 +109,17 @@ export default function JpAnalyzerIntegrationPanel({
         />
 
         <MiniValue
-          label="Resolved spans"
+          label="Reader spans"
+          value={result?.readerSpans?.length ?? '-'}
+        />
+
+        <MiniValue
+          label="Reader schema"
+          value={result?.readerSpanSchemaVersion ?? '-'}
+        />
+
+        <MiniValue
+          label="Resolved spans (legacy)"
           value={result?.resolvedSpans?.length ?? '-'}
         />
 
@@ -157,7 +167,7 @@ export default function JpAnalyzerIntegrationPanel({
       {adaptedResult && (
   <details className="debug-nested" open>
     <summary>
-      Analyzer reader adapter — Phase 3
+      Authoritative readerSpans adapter — Phase 3A
     </summary>
 
     <div className="debug-summary-grid">
@@ -169,7 +179,7 @@ export default function JpAnalyzerIntegrationPanel({
       />
 
       <MiniValue
-        label="Reader words"
+        label="Reader spans"
         value={
           adaptedResult.words?.length ?? 0
         }
@@ -183,9 +193,9 @@ export default function JpAnalyzerIntegrationPanel({
       />
 
       <MiniValue
-        label="Learning"
+        label="Lexical"
         value={
-          adaptedResult.summary?.learning ?? '-'
+          adaptedResult.summary?.lexical ?? '-'
         }
       />
 
@@ -204,9 +214,9 @@ export default function JpAnalyzerIntegrationPanel({
       />
 
       <MiniValue
-        label="Numeric"
+        label="Corrected"
         value={
-          adaptedResult.summary?.numeric ?? '-'
+          adaptedResult.summary?.corrected ?? '-'
         }
       />
 

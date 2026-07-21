@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:reader-spans": "node scripts/test-analyzer-reader-spans.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.3",
