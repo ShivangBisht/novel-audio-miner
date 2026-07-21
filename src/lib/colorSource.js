@@ -11,7 +11,7 @@ export const COLOR_SOURCES = Object.freeze({
   PLAIN_TEXT: 'plain-text'
 });
 
-export const DEFAULT_COLOR_SOURCE = COLOR_SOURCES.LEGACY_KUROMOJI;
+export const DEFAULT_COLOR_SOURCE = COLOR_SOURCES.JP_ANALYZER;
 
 const VALID_COLOR_SOURCES = new Set(Object.values(COLOR_SOURCES));
 

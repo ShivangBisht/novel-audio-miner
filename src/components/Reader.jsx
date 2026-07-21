@@ -425,6 +425,10 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   const [sessionToken, setSessionToken] = useState(() => { try { return localStorage.getItem('nadeshiko_session_token') || ''; } catch { return ''; } });
   const [forceTts, setForceTts] = useState(() => { try { return localStorage.getItem('force_tts') === 'true'; } catch { return false; } });
   const [debugMode, setDebugMode] = useState(saved.debugMode ?? false);
+  const hasSavedColorSource = Object.prototype.hasOwnProperty.call(
+    saved,
+    'colorSource'
+  );
   const [colorSource, setColorSource] = useState(() =>
     normalizeColorSource(saved.colorSource)
   );
@@ -933,7 +937,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
                   <option value={COLOR_SOURCES.PLAIN_TEXT}>Plain text</option>
                 </select>
                 <span style={{ fontSize: '10px' }}>
-                  JP Analyzer uses authoritative readerSpans. Invalid analyzer output is shown as neutral text.
+                  JP Analyzer is the primary colour source. Legacy Kuromoji remains available for rollback. Invalid analyzer output is shown as neutral text.
                 </span>
               </label>
               <label style={{ fontSize: '11px', color: 'var(--muted)', display: 'grid', gap: '4px' }}>Session Token: <input value={sessionToken} onChange={e => handleSaveSessionToken(e.target.value)} placeholder="Paste __Secure-nadeshiko.session_token" /><span style={{ fontSize: '10px' }}>F12 → Application → Cookies → nadeshiko.co</span></label>
@@ -965,14 +969,16 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
                 </div>
               </details>
 <details className="debug-nested" open>
-  <summary>Explicit colour source — Phase 3B</summary>
+  <summary>Primary colour source — Phase 3C</summary>
   <div className="debug-empty">
     The selected source changes visible colouring only. Comprehension,
     New Words, known-word handling and mining still use Kuromoji.
   </div>
   <div className="debug-summary-grid">
     <div className="debug-mini-card"><span>Requested source</span><strong>{colorSource}</strong></div>
+    <div className="debug-mini-card"><span>Preference origin</span><strong>{hasSavedColorSource ? 'saved' : 'default'}</strong></div>
     <div className="debug-mini-card"><span>Active source</span><strong>{activeColorSource}</strong></div>
+    <div className="debug-mini-card"><span>Analyzer state</span><strong>{jpAnalyzerShadow?.status ?? 'idle'}</strong></div>
     <div className="debug-mini-card"><span>Analyzer available</span><strong>{String(jpAnalyzerPreviewAvailable)}</strong></div>
     <div className="debug-mini-card"><span>Neutral fallback</span><strong>{String(analyzerNeutralFallback)}</strong></div>
   </div>

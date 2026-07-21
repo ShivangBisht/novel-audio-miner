@@ -9,8 +9,22 @@ import {
 const analyzerWords = [{ surface: '走ってきた', start: 3, end: 8 }];
 const legacyWords = [{ surface: '走っ' }, { surface: 'てきた' }];
 
-assert.equal(DEFAULT_COLOR_SOURCE, COLOR_SOURCES.LEGACY_KUROMOJI);
-assert.equal(normalizeColorSource('bad-value'), COLOR_SOURCES.LEGACY_KUROMOJI);
+assert.equal(DEFAULT_COLOR_SOURCE, COLOR_SOURCES.JP_ANALYZER);
+assert.equal(normalizeColorSource(undefined), COLOR_SOURCES.JP_ANALYZER);
+assert.equal(normalizeColorSource(null), COLOR_SOURCES.JP_ANALYZER);
+assert.equal(normalizeColorSource('bad-value'), COLOR_SOURCES.JP_ANALYZER);
+assert.equal(
+  normalizeColorSource(COLOR_SOURCES.JP_ANALYZER),
+  COLOR_SOURCES.JP_ANALYZER
+);
+assert.equal(
+  normalizeColorSource(COLOR_SOURCES.LEGACY_KUROMOJI),
+  COLOR_SOURCES.LEGACY_KUROMOJI
+);
+assert.equal(
+  normalizeColorSource(COLOR_SOURCES.PLAIN_TEXT),
+  COLOR_SOURCES.PLAIN_TEXT
+);
 
 const analyzer = resolveVisibleColourSource({
   requestedSource: COLOR_SOURCES.JP_ANALYZER,
