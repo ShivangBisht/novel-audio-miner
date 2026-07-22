@@ -7,6 +7,11 @@ import {
   normalizeAnalyzerMetadata,
   validateAnalyzerCacheRecord
 } from './analyzerCacheIdentity.js';
+import {
+  clearAnalyzerMetadataLease,
+  getAnalyzerMetadataLease,
+  setAnalyzerMetadataLease
+} from './analyzerMetadataLease.js';
 
 const MAX_PERSISTED_ENTRIES = 100;
 const memoryCache = new Map();
@@ -157,6 +162,7 @@ export async function prefetchJpAnalyzerSentences(texts, metadata, onProgress) {
 
 export function clearJpAnalyzerShadowCache() {
   memoryCache.clear();
+  clearAnalyzerMetadataLease();
   try {
     const keys = [];
     for (let index = 0; index < localStorage.length; index += 1) {
@@ -185,64 +191,102 @@ export function useJpAnalyzerShadow(text, { enabled = true, prefetchTexts = [] }
     if (!enabled || !sourceText.trim()) { setState(initial()); return; }
     let disposed = false;
 
+    async function runPrefetch(metadata) {
+      if (!stablePrefetchTexts.length) return;
+      setState(previous => previous.status === 'ready'
+        ? { ...previous, prefetchStatus: 'running' }
+        : previous);
+      const summary = await prefetchJpAnalyzerSentences(
+        stablePrefetchTexts,
+        metadata,
+        progress => {
+          if (disposed || runId !== generation.current) return;
+          setState(previous => previous.status === 'ready' ? {
+            ...previous,
+            prefetchStatus: 'running',
+            prefetchTargetCount: progress.targetCount,
+            prefetchCompletedCount: progress.completedCount,
+            prefetchFailedCount: progress.failedCount,
+            inFlightRequestCount: pendingRequests.size
+          } : previous);
+        }
+      );
+      if (disposed || runId !== generation.current) return;
+      setState(previous => previous.status === 'ready' ? {
+        ...previous,
+        prefetchStatus: summary.failedCount ? 'complete-with-errors' : 'complete',
+        prefetchTargetCount: summary.targetCount,
+        prefetchCompletedCount: summary.completedCount,
+        prefetchFailedCount: summary.failedCount,
+        inFlightRequestCount: pendingRequests.size
+      } : previous);
+    }
+
+    function publishForeground(foreground, metadata, reasonPrefix = 'validated') {
+      const common = {
+        correctionRevision: metadata.correctionRevision,
+        analyzerVersion: metadata.analyzerVersion,
+        readerSpanSchemaVersion: metadata.readerSpanSchemaVersion
+      };
+      setState({
+        ...initial(), ...common, status: 'ready', source: foreground.source,
+        result: foreground.record, elapsedMs: foreground.elapsedMs,
+        cacheKey: foreground.hash, cacheIdentity: foreground.identity,
+        cacheReason: foreground.source === 'network'
+          ? 'network-result-cached'
+          : `${reasonPrefix}-${foreground.source}-hit`,
+        inFlightRequestCount: pendingRequests.size,
+        prefetchStatus: stablePrefetchTexts.length ? 'queued' : 'idle',
+        prefetchTargetCount: stablePrefetchTexts.length
+      });
+    }
+
     async function run() {
-      setState({ ...initial(), status: 'metadata', cacheReason: 'checking-authoritative-metadata' });
+      const leasedMetadata = getAnalyzerMetadataLease();
+      if (!leasedMetadata) {
+        setState({ ...initial(), status: 'metadata', cacheReason: 'checking-authoritative-metadata' });
+      }
+
       try {
+        if (leasedMetadata) {
+          const leasedForeground = await resolveSentence(sourceText, leasedMetadata);
+          if (disposed || runId !== generation.current) return;
+          publishForeground(leasedForeground, leasedMetadata, 'leased');
+        }
+
         const health = await getAnalyzerHealth();
         const metadata = normalizeAnalyzerMetadata(health);
         if (!metadata.valid) throw new Error('JP Analyzer health lacks cache identity metadata.');
-        const common = {
-          correctionRevision: metadata.correctionRevision,
-          analyzerVersion: metadata.analyzerVersion,
-          readerSpanSchemaVersion: metadata.readerSpanSchemaVersion
-        };
-        const foreground = await resolveSentence(sourceText, metadata);
-        if (disposed || runId !== generation.current) return;
-        setState({
-          ...initial(), ...common, status: 'ready', source: foreground.source,
-          result: foreground.record, elapsedMs: foreground.elapsedMs,
-          cacheKey: foreground.hash, cacheIdentity: foreground.identity,
-          cacheReason: foreground.source === 'network'
-            ? 'network-result-cached'
-            : `validated-${foreground.source}-hit`,
-          inFlightRequestCount: pendingRequests.size,
-          prefetchStatus: stablePrefetchTexts.length ? 'queued' : 'idle',
-          prefetchTargetCount: stablePrefetchTexts.length
-        });
+        setAnalyzerMetadataLease(metadata);
 
-        if (!stablePrefetchTexts.length) return;
-        setState(previous => previous.status === 'ready'
-          ? { ...previous, prefetchStatus: 'running' }
-          : previous);
-        const summary = await prefetchJpAnalyzerSentences(
-          stablePrefetchTexts,
-          metadata,
-          progress => {
-            if (disposed || runId !== generation.current) return;
-            setState(previous => previous.status === 'ready' ? {
-              ...previous,
-              prefetchStatus: 'running',
-              prefetchTargetCount: progress.targetCount,
-              prefetchCompletedCount: progress.completedCount,
-              prefetchFailedCount: progress.failedCount,
-              inFlightRequestCount: pendingRequests.size
-            } : previous);
-          }
-        );
-        if (disposed || runId !== generation.current) return;
-        setState(previous => previous.status === 'ready' ? {
-          ...previous,
-          prefetchStatus: summary.failedCount ? 'complete-with-errors' : 'complete',
-          prefetchTargetCount: summary.targetCount,
-          prefetchCompletedCount: summary.completedCount,
-          prefetchFailedCount: summary.failedCount,
-          inFlightRequestCount: pendingRequests.size
-        } : previous);
+        const leaseStillMatches = leasedMetadata &&
+          leasedMetadata.analyzerVersion === metadata.analyzerVersion &&
+          leasedMetadata.readerSpanSchemaVersion === metadata.readerSpanSchemaVersion &&
+          leasedMetadata.correctionRevision === metadata.correctionRevision;
+
+        if (!leaseStillMatches) {
+          const foreground = await resolveSentence(sourceText, metadata);
+          if (disposed || runId !== generation.current) return;
+          publishForeground(foreground, metadata);
+        }
+
+        await runPrefetch(metadata);
       } catch (error) {
+        clearAnalyzerMetadataLease();
         if (disposed || runId !== generation.current) return;
-        setState({
-          ...initial(), status: 'error', source: 'network', error,
-          cacheReason: 'metadata-or-analysis-failed'
+        setState(previous => {
+          if (previous.status === 'ready') {
+            return {
+              ...previous,
+              prefetchStatus: 'complete-with-errors',
+              prefetchFailedCount: Math.max(1, previous.prefetchFailedCount),
+              error
+            };
+          }
+          return {
+            ...initial(), status: 'error', source: 'network', error,
+            cacheReason: 'metadata-or-analysis-failed'
+          };
         });
       }
     }

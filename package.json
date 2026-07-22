@@ -10,9 +10,10 @@
     "preview": "vite preview",
     "test:reader-spans": "node scripts/test-analyzer-reader-spans.mjs",
     "test:color-sources": "node scripts/test-color-sources.mjs",
-    "test:phase3": "npm run test:reader-spans && npm run test:color-sources && npm run test:analyzer-cache && npm run test:scene-prefetch",
+    "test:phase3": "npm run test:reader-spans && npm run test:color-sources && npm run test:analyzer-cache && npm run test:scene-prefetch && npm run test:analyzer-metadata-lease",
     "test:analyzer-cache": "node scripts/test-analyzer-cache.mjs",
-    "test:scene-prefetch": "node scripts/test-scene-prefetch.mjs"
+    "test:scene-prefetch": "node scripts/test-scene-prefetch.mjs",
+    "test:analyzer-metadata-lease": "node scripts/test-analyzer-metadata-lease.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.3",
