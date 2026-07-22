@@ -13,6 +13,7 @@ import {
 import { adaptCompactAnalysisToReaderWords } from '../lib/analyzerWordAdapter.js';
 import { adaptReaderSpansForRendering } from '../lib/analyzerReaderSpanAdapter.js';
 import { compareReaderWordModels } from '../lib/analyzerShadowComparison.js';
+import { findAdjacentTextScenes } from '../lib/scenePrefetch.js';
 import {
   COLOR_SOURCES,
   normalizeColorSource,
@@ -455,12 +456,17 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   const isImage = currentItem?.type === 'illustration';
   const currentData = currentItem?.data;
   const cleanedTitle = cleanBookTitle(book.title);
+  const adjacentTextScenes = useMemo(
+    () => findAdjacentTextScenes(displayItems, itemIndex),
+    [displayItems, itemIndex]
+  );
   const jpAnalyzerShadow = useJpAnalyzerShadow(
-  isText ? currentData?.plainText : '',
-  {
-    enabled: true
-  }
-);
+    isText ? currentData?.plainText : '',
+    {
+      enabled: true,
+      prefetchTexts: adjacentTextScenes.ordered.map(target => target.text)
+    }
+  );
   const jpAnalyzerLegacyAdapted = useMemo(() => {
     if (
       !isText ||

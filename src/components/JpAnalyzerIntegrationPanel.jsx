@@ -108,6 +108,11 @@ export default function JpAnalyzerIntegrationPanel({
           }
         />
 
+        <MiniValue label="Prefetch" value={shadowState?.prefetchStatus ?? 'idle'} />
+        <MiniValue label="Prefetch targets" value={shadowState?.prefetchTargetCount ?? 0} />
+        <MiniValue label="Prefetch complete" value={`${shadowState?.prefetchCompletedCount ?? 0}/${shadowState?.prefetchTargetCount ?? 0}`} />
+        <MiniValue label="Prefetch failures" value={shadowState?.prefetchFailedCount ?? 0} />
+
         <MiniValue
           label="Reader spans"
           value={result?.readerSpans?.length ?? '-'}
