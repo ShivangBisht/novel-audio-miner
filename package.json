@@ -13,7 +13,9 @@
     "test:phase3": "npm run test:reader-spans && npm run test:color-sources && npm run test:analyzer-cache && npm run test:scene-prefetch && npm run test:analyzer-metadata-lease",
     "test:analyzer-cache": "node scripts/test-analyzer-cache.mjs",
     "test:scene-prefetch": "node scripts/test-scene-prefetch.mjs",
-    "test:analyzer-metadata-lease": "node scripts/test-analyzer-metadata-lease.mjs"
+    "test:analyzer-metadata-lease": "node scripts/test-analyzer-metadata-lease.mjs",
+    "test:analyzer-presentation": "node scripts/test-analyzer-presentation.mjs",
+    "test:phase4": "npm run test:phase3 && npm run test:analyzer-presentation"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.3",

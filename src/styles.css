@@ -19,7 +19,9 @@
   --word-unlisted: #8b949e;
   --word-name: #a78bfa;
   --word-numeric: #7dd3fc;
-  --word-grammar: #c9d1d9;
+  --word-function: #8b949e;
+  --word-grammar: #79c0ff;
+  --word-unresolved: #6e7681;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -131,7 +133,10 @@ body {
 .word-unknown.word-freq-unlisted { color: var(--word-unlisted); }
 .word-name { color: var(--word-name); }
 .word-numeric { color: var(--word-numeric); }
-.word-grammar { color: var(--word-grammar); }
+.word-function { color: var(--word-function); }
+.word-grammar { color: var(--word-grammar); font-weight: 600; }
+.word-neutral { color: inherit; }
+.word-unresolved { color: var(--word-unresolved); }
 
 
 /* ─── New word controls ─── */

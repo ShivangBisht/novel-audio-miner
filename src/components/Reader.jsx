@@ -14,6 +14,7 @@ import { adaptCompactAnalysisToReaderWords } from '../lib/analyzerWordAdapter.js
 import { adaptReaderSpansForRendering } from '../lib/analyzerReaderSpanAdapter.js';
 import { compareReaderWordModels } from '../lib/analyzerShadowComparison.js';
 import { findAdjacentTextScenes } from '../lib/scenePrefetch.js';
+import { resolveAnalyzerPresentationClass } from '../lib/analyzerPresentationPolicy.js';
 import {
   COLOR_SOURCES,
   normalizeColorSource,
@@ -83,27 +84,10 @@ function getWordColorClass(wordOrToken) {
   const token = typeof wordOrToken === 'object' ? wordOrToken : null;
 
   if (token?.analysisSource === 'jp-analyzer-reader-spans') {
-    const role = token.displayRole;
-
-    if (role === 'punctuation' || role === 'unresolved') return '';
-    if (role === 'name') return 'word-name';
-    if (role === 'function' || role === 'learnable-grammar') return 'word-grammar';
-
-    if (role === 'lexical' || role === 'lexical-compound') {
-      const knownKey = getTokenKnownKey(token);
-      const frequencyKey = getTokenFrequencyKey(token);
-
-      if (knownKey && isKnownWord(knownKey)) return 'word-known';
-      if (!frequencyKey) return 'word-unknown word-freq-unlisted';
-
-      const frequency = getFrequency(frequencyKey);
-      if (frequency?.category) {
-        return `word-unknown word-freq-${frequency.category}`;
-      }
-      return 'word-unknown word-freq-unlisted';
-    }
-
-    return '';
+    return resolveAnalyzerPresentationClass(token, {
+      isKnown: isKnownWord,
+      getFrequencyCategory: key => getFrequency(key)?.category ?? null
+    });
   }
 
   const word = getTokenKnownKey(wordOrToken);
