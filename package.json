@@ -15,7 +15,9 @@
     "test:scene-prefetch": "node scripts/test-scene-prefetch.mjs",
     "test:analyzer-metadata-lease": "node scripts/test-analyzer-metadata-lease.mjs",
     "test:analyzer-presentation": "node scripts/test-analyzer-presentation.mjs",
-    "test:phase4": "npm run test:phase3 && npm run test:analyzer-presentation"
+    "test:phase4": "npm run test:phase3 && npm run test:analyzer-presentation",
+    "test:analyzer-learning-model": "node scripts/test-analyzer-learning-model.mjs",
+    "test:phase5-shadow": "npm run test:phase4 && npm run test:analyzer-learning-model"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.3",

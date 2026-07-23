@@ -9,6 +9,7 @@ export default function JpAnalyzerIntegrationPanel({
   shadowState,
   adaptedResult,
   comparison,
+  learningShadow,
   onClearShadowCache
 }) {
   const [connectionStatus, setConnectionStatus] =
@@ -237,6 +238,25 @@ export default function JpAnalyzerIntegrationPanel({
       <pre>
         {adaptedResult.errors.join('\n')}
       </pre>
+    )}
+  </details>
+)}
+{learningShadow && (
+  <details className="debug-nested" open>
+    <summary>Phase 5.1 learning-model shadow comparison</summary>
+    <div className="debug-empty">Read-only diagnostics. Production comprehension, New Words and mining still use Kuromoji.</div>
+    {learningShadow.error ? <pre>{learningShadow.error}</pre> : (
+      <>
+        <div className="debug-summary-grid">
+          <MiniValue label="Legacy comprehension" value={learningShadow.legacy?.comprehension ? `${learningShadow.legacy.comprehension.percent}% (${learningShadow.legacy.comprehension.known}/${learningShadow.legacy.comprehension.total})` : '-'} />
+          <MiniValue label="Analyzer comprehension" value={learningShadow.analyzer?.comprehension?.percent == null ? '-' : `${learningShadow.analyzer.comprehension.percent}% (${learningShadow.analyzer.comprehension.known}/${learningShadow.analyzer.comprehension.total})`} />
+          <MiniValue label="Legacy New Words" value={learningShadow.legacy?.newWords?.length ?? 0} />
+          <MiniValue label="Analyzer New Words" value={learningShadow.analyzer?.newWords?.length ?? 0} />
+          <MiniValue label="Legacy mining candidates" value={learningShadow.legacy?.miningCandidateCount ?? 0} />
+          <MiniValue label="Analyzer mining candidates" value={learningShadow.analyzer?.miningCandidates?.length ?? 0} />
+        </div>
+        <details className="debug-nested"><summary>Analyzer learning details</summary><pre>{JSON.stringify(learningShadow.analyzer, null, 2)}</pre></details>
+      </>
     )}
   </details>
 )}

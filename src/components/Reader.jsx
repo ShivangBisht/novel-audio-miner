@@ -15,6 +15,7 @@ import { adaptReaderSpansForRendering } from '../lib/analyzerReaderSpanAdapter.j
 import { compareReaderWordModels } from '../lib/analyzerShadowComparison.js';
 import { findAdjacentTextScenes } from '../lib/scenePrefetch.js';
 import { resolveAnalyzerPresentationClass } from '../lib/analyzerPresentationPolicy.js';
+import { buildAnalyzerLearningModel } from '../lib/analyzerLearningModel.js';
 import {
   COLOR_SOURCES,
   normalizeColorSource,
@@ -558,6 +559,27 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     return result;
   }, [currentData, isText, cacheVersion, globalFreqReady]);
 
+  const analyzerLearningShadow = useMemo(() => {
+    if (!isText || !jpAnalyzerReader.valid) return null;
+    try {
+      const analyzer = buildAnalyzerLearningModel(jpAnalyzerReader.words, {
+        isKnown: isKnownWord,
+        getFrequency
+      });
+      return {
+        analyzer,
+        legacy: {
+          comprehension,
+          newWords: unknownWords,
+          miningCandidateCount: (currentData?.miningCandidates || currentData?.contentWords || []).length
+        },
+        error: null
+      };
+    } catch (error) {
+      return { analyzer: null, legacy: { comprehension, newWords: unknownWords }, error: error?.message || String(error) };
+    }
+  }, [isText, jpAnalyzerReader, comprehension, unknownWords, currentData, cacheVersion, globalFreqReady]);
+
   const chapterStarts = useMemo(() => {
     const starts = new Map();
     displayItems.forEach((di, idx) => {
@@ -984,6 +1006,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   shadowState={jpAnalyzerShadow}
   adaptedResult={jpAnalyzerReader}
   comparison={jpAnalyzerComparison}
+  learningShadow={analyzerLearningShadow}
   onClearShadowCache={
     clearJpAnalyzerShadowCache
   }
