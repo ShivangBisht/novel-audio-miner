@@ -15,7 +15,7 @@ import { adaptReaderSpansForRendering } from '../lib/analyzerReaderSpanAdapter.j
 import { compareReaderWordModels } from '../lib/analyzerShadowComparison.js';
 import { findAdjacentTextScenes } from '../lib/scenePrefetch.js';
 import { resolveAnalyzerPresentationClass } from '../lib/analyzerPresentationPolicy.js';
-import { buildAnalyzerLearningModel } from '../lib/analyzerLearningModel.js';
+import { buildAnalyzerLearningModel, resolveLearningOwnership } from '../lib/analyzerLearningModel.js';
 import {
   COLOR_SOURCES,
   normalizeColorSource,
@@ -532,7 +532,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   const analyzerNeutralFallback =
     colourSourceResolution.neutralFallback;
 
-  const comprehension = useMemo(() => {
+  const legacyComprehension = useMemo(() => {
     if (!isText) return null;
     const words = currentData?.comprehensionWords || currentData?.contentWords || [];
     if (words.length === 0) return null;
@@ -543,42 +543,70 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     return { known, total: words.length, percent: Math.round((known / words.length) * 100) };
   }, [currentData, isText, cacheVersion]);
 
-  const unknownWords = useMemo(() => {
+  const legacyUnknownWords = useMemo(() => {
     if (!isText) return [];
     const sourceWords = currentData?.miningCandidates || currentData?.contentWords || [];
     const seen = new Set();
     const result = [];
     for (const w of sourceWords) {
       const form = w.dictionaryForm || w.surface;
-      if (isTokenKnownForLearning(w)) continue;
-      if (seen.has(form)) continue;
+      if (!form || isTokenKnownForLearning(w) || seen.has(form)) continue;
       seen.add(form);
-      const freq = getFrequency(form);
-      result.push({ word: form, surface: w.surface, freq });
+      result.push({ word: form, surface: w.surface, freq: getFrequency(form) });
     }
     return result;
   }, [currentData, isText, cacheVersion, globalFreqReady]);
 
-  const analyzerLearningShadow = useMemo(() => {
+  const analyzerLearningModel = useMemo(() => {
     if (!isText || !jpAnalyzerReader.valid) return null;
     try {
-      const analyzer = buildAnalyzerLearningModel(jpAnalyzerReader.words, {
+      return buildAnalyzerLearningModel(jpAnalyzerReader.words, {
         isKnown: isKnownWord,
         getFrequency
       });
-      return {
-        analyzer,
-        legacy: {
-          comprehension,
-          newWords: unknownWords,
-          miningCandidateCount: (currentData?.miningCandidates || currentData?.contentWords || []).length
-        },
-        error: null
-      };
-    } catch (error) {
-      return { analyzer: null, legacy: { comprehension, newWords: unknownWords }, error: error?.message || String(error) };
+    } catch {
+      return null;
     }
-  }, [isText, jpAnalyzerReader, comprehension, unknownWords, currentData, cacheVersion, globalFreqReady]);
+  }, [isText, jpAnalyzerReader, cacheVersion, globalFreqReady]);
+
+  const learningOwnership = useMemo(() => resolveLearningOwnership({
+    requestedSource: colorSource,
+    analyzerValid: jpAnalyzerPreviewAvailable && Boolean(analyzerLearningModel),
+    analyzerModel: analyzerLearningModel,
+    legacyComprehension,
+    legacyNewWords: legacyUnknownWords
+  }), [
+    colorSource,
+    jpAnalyzerPreviewAvailable,
+    analyzerLearningModel,
+    legacyComprehension,
+    legacyUnknownWords
+  ]);
+
+  const comprehension = learningOwnership.comprehension;
+  const unknownWords = learningOwnership.newWords;
+
+  const analyzerLearningShadow = useMemo(() => {
+    if (!isText || !jpAnalyzerReader.valid) return null;
+    return {
+      analyzer: analyzerLearningModel,
+      legacy: {
+        comprehension: legacyComprehension,
+        newWords: legacyUnknownWords,
+        miningCandidateCount: (currentData?.miningCandidates || currentData?.contentWords || []).length
+      },
+      activeSource: learningOwnership.source,
+      error: analyzerLearningModel ? null : 'Analyzer learning model is unavailable.'
+    };
+  }, [
+    isText,
+    jpAnalyzerReader,
+    analyzerLearningModel,
+    legacyComprehension,
+    legacyUnknownWords,
+    currentData,
+    learningOwnership.source
+  ]);
 
   const chapterStarts = useMemo(() => {
     const starts = new Map();
@@ -655,6 +683,8 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     if (!target) return [];
     const candidates = new Set();
     const tokenSources = [
+      ...(analyzerLearningModel?.comprehension?.spans || []),
+      ...(analyzerLearningModel?.newWords || []),
       ...(currentData?.miningCandidates || []),
       ...(currentData?.displayWords || []),
       ...(currentData?.contentWords || []),
@@ -664,7 +694,9 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
 
     for (const token of tokenSources) {
       const surface = String(token?.surface || '').trim();
-      const dictionaryForm = String(token?.dictionaryForm || surface || '').trim();
+      const dictionaryForm = String(
+        token?.key || token?.knownLookupKey || token?.dictionaryForm || surface || ''
+      ).trim();
       if (surface === target || dictionaryForm === target) {
         if (dictionaryForm) candidates.add(dictionaryForm);
         if (surface) candidates.add(surface);
@@ -838,6 +870,12 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
               <span>Comprehension: <strong>{comprehension.percent}%</strong> ({comprehension.known}/{comprehension.total})</span>
             </>
           )}
+          {isText && !learningOwnership.available && (
+            <>
+              <span>·</span>
+              <span>Analyzer learning model unavailable</span>
+            </>
+          )}
         </div>
         <div className="status-right">
           <span>{getCacheSize()} known</span>
@@ -983,8 +1021,9 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
 <details className="debug-nested" open>
   <summary>Primary colour source — Phase 3C</summary>
   <div className="debug-empty">
-    The selected source changes visible colouring only. Comprehension,
-    New Words, known-word handling and mining still use Kuromoji.
+    JP Analyzer and Plain Text modes use authoritative analyzer comprehension
+    and New Words. Legacy Kuromoji mode retains the legacy learning model.
+    Mining remains on the legacy path until Phase 5.2B.
   </div>
   <div className="debug-summary-grid">
     <div className="debug-mini-card"><span>Requested source</span><strong>{colorSource}</strong></div>

@@ -67,7 +67,7 @@ export default function JpAnalyzerIntegrationPanel({
       <div className="debug-empty">
         JP Analyzer runs automatically for the active sentence.
         The optional preview renders authoritative readerSpans.
-        Comprehension, New Words and mining remain on Kuromoji.
+        Comprehension and New Words now follow the active learning source; mining remains legacy until Phase 5.2B.
       </div>
 
       <div className="dictionary-import-row">
@@ -244,10 +244,11 @@ export default function JpAnalyzerIntegrationPanel({
 {learningShadow && (
   <details className="debug-nested" open>
     <summary>Phase 5.1 learning-model shadow comparison</summary>
-    <div className="debug-empty">Read-only diagnostics. Production comprehension, New Words and mining still use Kuromoji.</div>
+    <div className="debug-empty">Diagnostics remain visible after comprehension and New Words activation. Mining remains legacy until Phase 5.2B.</div>
     {learningShadow.error ? <pre>{learningShadow.error}</pre> : (
       <>
         <div className="debug-summary-grid">
+          <MiniValue label="Active learning source" value={learningShadow.activeSource ?? '-'} />
           <MiniValue label="Legacy comprehension" value={learningShadow.legacy?.comprehension ? `${learningShadow.legacy.comprehension.percent}% (${learningShadow.legacy.comprehension.known}/${learningShadow.legacy.comprehension.total})` : '-'} />
           <MiniValue label="Analyzer comprehension" value={learningShadow.analyzer?.comprehension?.percent == null ? '-' : `${learningShadow.analyzer.comprehension.percent}% (${learningShadow.analyzer.comprehension.known}/${learningShadow.analyzer.comprehension.total})`} />
           <MiniValue label="Legacy New Words" value={learningShadow.legacy?.newWords?.length ?? 0} />
