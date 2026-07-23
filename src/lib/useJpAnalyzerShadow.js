@@ -212,6 +212,11 @@ export function useJpAnalyzerShadow(text, { enabled = true, prefetchTexts = [] }
         }
       );
       if (disposed || runId !== generation.current) return;
+      if (summary.completedCount > 0) {
+        // Successful cache resolution under this authoritative identity keeps
+        // the immediate-navigation lease fresh after a long prefetch cycle.
+        setAnalyzerMetadataLease(metadata);
+      }
       setState(previous => previous.status === 'ready' ? {
         ...previous,
         prefetchStatus: summary.failedCount ? 'complete-with-errors' : 'complete',

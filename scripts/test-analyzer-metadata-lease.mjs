@@ -22,6 +22,16 @@ assert.equal(
   metadata.analyzerVersion
 );
 assert.equal(getAnalyzerMetadataLease(1001 + ANALYZER_METADATA_LEASE_MS), null);
+setAnalyzerMetadataLease(metadata, 3000);
+setAnalyzerMetadataLease(metadata, 7000);
+assert.equal(
+  getAnalyzerMetadataLease(7000 + ANALYZER_METADATA_LEASE_MS).verifiedAt,
+  7000
+);
+assert.equal(
+  getAnalyzerMetadataLease(7001 + ANALYZER_METADATA_LEASE_MS),
+  null
+);
 setAnalyzerMetadataLease({ ...metadata, valid: false }, 2000);
 assert.equal(getAnalyzerMetadataLease(2000), null);
 console.log('analyzer metadata lease tests passed');
