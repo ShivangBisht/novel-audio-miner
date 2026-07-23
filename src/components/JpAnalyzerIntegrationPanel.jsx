@@ -67,7 +67,7 @@ export default function JpAnalyzerIntegrationPanel({
       <div className="debug-empty">
         JP Analyzer runs automatically for the active sentence.
         The optional preview renders authoritative readerSpans.
-        Comprehension and New Words now follow the active learning source; mining remains legacy until Phase 5.2B.
+        Comprehension and New Words now follow the active learning source; mining uses exact analyzer-owned span offsets.
       </div>
 
       <div className="dictionary-import-row">
@@ -244,7 +244,7 @@ export default function JpAnalyzerIntegrationPanel({
 {learningShadow && (
   <details className="debug-nested" open>
     <summary>Phase 5.1 learning-model shadow comparison</summary>
-    <div className="debug-empty">Diagnostics remain visible after comprehension and New Words activation. Mining remains legacy until Phase 5.2B.</div>
+    <div className="debug-empty">Diagnostics remain visible after comprehension and New Words activation. Mining uses exact analyzer-owned span offsets.</div>
     {learningShadow.error ? <pre>{learningShadow.error}</pre> : (
       <>
         <div className="debug-summary-grid">

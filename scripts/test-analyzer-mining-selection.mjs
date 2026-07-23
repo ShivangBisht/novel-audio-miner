@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { createAnalyzerMiningContext, getAnalyzerMiningLookupKey, resolveAnalyzerMiningCandidateForOffsets } from '../src/lib/analyzerMiningSelection.js';
+const lexical={start:3,end:6,surface:'走った',displayRole:'lexical',eligibleForMining:true,knownLookupKey:'走る',headword:'走る'};
+const grammar={start:6,end:9,surface:'てきた',displayRole:'learnable-grammar',eligibleForMining:true,grammarId:'TE_KURU',hostLookupKey:'来る',grammarFocusRanges:[{start:6,end:9,surface:'てきた'}]};
+assert.equal(resolveAnalyzerMiningCandidateForOffsets([lexical,grammar],3,6).candidate,lexical);
+assert.equal(resolveAnalyzerMiningCandidateForOffsets([lexical,grammar],4,5).candidate,lexical);
+assert.equal(resolveAnalyzerMiningCandidateForOffsets([lexical,grammar],5,7).reason,'selection-not-minable');
+assert.equal(resolveAnalyzerMiningCandidateForOffsets([{...lexical},{...lexical}],4,5).reason,'ambiguous-selection');
+assert.equal(getAnalyzerMiningLookupKey(lexical),'走る');
+assert.equal(getAnalyzerMiningLookupKey(grammar),'来る');
+const context=createAnalyzerMiningContext(grammar,7,8);
+assert.equal(context.spanStart,6); assert.equal(context.grammarId,'TE_KURU'); assert.notEqual(context.grammarFocusRanges,grammar.grammarFocusRanges);
+console.log('offset-aware analyzer mining tests passed');

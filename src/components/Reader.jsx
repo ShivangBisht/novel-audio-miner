@@ -16,6 +16,7 @@ import { compareReaderWordModels } from '../lib/analyzerShadowComparison.js';
 import { findAdjacentTextScenes } from '../lib/scenePrefetch.js';
 import { resolveAnalyzerPresentationClass } from '../lib/analyzerPresentationPolicy.js';
 import { buildAnalyzerLearningModel, resolveLearningOwnership } from '../lib/analyzerLearningModel.js';
+import { createAnalyzerMiningContext, getAnalyzerMiningLookupKey, resolveAnalyzerMiningCandidateForOffsets } from '../lib/analyzerMiningSelection.js';
 import {
   COLOR_SOURCES,
   normalizeColorSource,
@@ -269,7 +270,7 @@ function renderColorizedPlainText(text, tokens, verticalMode) {
   let cursor = 0;
   ranges.forEach((range, index) => {
     if (range.start > cursor) parts.push(<span key={`plain-gap-${index}`}>{renderTextFragment(source.slice(cursor, range.start), verticalMode, `plain-gap-${index}`)}</span>);
-    parts.push(<span key={`plain-token-${index}`} className={range.className} data-token={range.surface}>{renderTextFragment(source.slice(range.start, range.end), verticalMode, `plain-token-${index}`)}</span>);
+    parts.push(<span key={`plain-token-${index}`} className={range.className} data-token={range.surface} data-analyzer-start={range.start} data-analyzer-end={range.end}>{renderTextFragment(source.slice(range.start, range.end), verticalMode, `plain-token-${index}`)}</span>);
     cursor = range.end;
   });
   if (cursor < source.length) parts.push(<span key="plain-tail">{renderTextFragment(source.slice(cursor), verticalMode, 'plain-tail')}</span>);
@@ -308,7 +309,7 @@ function applyRangesToVisibleTextNodes(nodes, ranges) {
       const end = Math.min(range.end, info.end);
       if (start < end) {
         if (!byNodeIndex.has(nodeIndex)) byNodeIndex.set(nodeIndex, []);
-        byNodeIndex.get(nodeIndex).push({ localStart: start - info.start, localEnd: end - info.start, className: range.className, surface: range.surface });
+        byNodeIndex.get(nodeIndex).push({ localStart: start - info.start, localEnd: end - info.start, className: range.className, surface: range.surface, analyzerStart: range.start, analyzerEnd: range.end });
       }
     }
   }
@@ -328,6 +329,8 @@ function applyRangesToVisibleTextNodes(nodes, ranges) {
         const span = document.createElement('span');
         span.className = segment.className;
         span.dataset.token = segment.surface;
+        span.dataset.analyzerStart = String(segment.analyzerStart);
+        span.dataset.analyzerEnd = String(segment.analyzerEnd);
         span.textContent = matched;
         frag.appendChild(span);
       }
@@ -400,6 +403,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   const [verticalMode, setVerticalMode] = useState(() => saved.verticalMode ?? true);
   const [readerStyle, setReaderStyle] = useState(() => ({ ...DEFAULT_STYLE, ...(saved.readerStyle || {}) }));
   const [selectedText, setSelectedText] = useState('');
+  const [analyzerMiningSelection, setAnalyzerMiningSelection] = useState(null);
   const [noteType, setNoteType] = useState(() => saved.noteType || 'Kiku');
   const [fields, setFields] = useState(() => ({ ...DEFAULT_FIELDS, ...(saved.fields || {}) }));
 
@@ -676,7 +680,39 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     setCacheVersion(v => v + 1);
   }
 
-  function handleTextSelection() { setTimeout(() => { const word = getSelectedWord(); if (word) setSelectedText(word); }, 10); }
+  function handleTextSelection() {
+    setTimeout(() => {
+      const word = getSelectedWord();
+      if (!word) return;
+      setSelectedText(word);
+      setAnalyzerMiningSelection(null);
+      if (learningOwnership.source !== 'jp-analyzer') return;
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed || !selection.rangeCount || !sentenceBoxRef.current) return;
+      const range = selection.getRangeAt(0);
+      const startElement = range.startContainer.nodeType === Node.ELEMENT_NODE ? range.startContainer : range.startContainer.parentElement;
+      const endElement = range.endContainer.nodeType === Node.ELEMENT_NODE ? range.endContainer : range.endContainer.parentElement;
+      const startSpan = startElement?.closest?.('[data-analyzer-start][data-analyzer-end]');
+      const endSpan = endElement?.closest?.('[data-analyzer-start][data-analyzer-end]');
+      if (!startSpan || !endSpan || !sentenceBoxRef.current.contains(startSpan) || !sentenceBoxRef.current.contains(endSpan)) return;
+      const spanStart = Number(startSpan.dataset.analyzerStart);
+      const spanEnd = Number(endSpan.dataset.analyzerEnd);
+      const endSpanStart = Number(endSpan.dataset.analyzerStart);
+      const endSpanEnd = Number(endSpan.dataset.analyzerEnd);
+      if (spanStart !== endSpanStart || spanEnd !== endSpanEnd) return;
+      const resolution = resolveAnalyzerMiningCandidateForOffsets(analyzerLearningModel?.miningCandidates, spanStart, spanEnd);
+      if (resolution.valid) {
+        setSelectedText(resolution.candidate.surface);
+        setAnalyzerMiningSelection(createAnalyzerMiningContext(resolution.candidate, spanStart, spanEnd));
+      }
+    }, 10);
+  }
+
+  function selectNewWord(newWord) {
+    setSelectedText(newWord.word);
+    const span = newWord.analyzerSpan;
+    setAnalyzerMiningSelection(span ? createAnalyzerMiningContext(span, span.start, span.end) : null);
+  }
 
   function getKnownKeyCandidates(word) {
     const target = String(word || '').trim();
@@ -797,7 +833,17 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     if (!selectedText) { setMiningDebug({ status: 'blocked', stage: 'validation', selectedWord: '', error: 'Select a word first.', updatedAt: new Date().toISOString() }); setStatus({ type: 'error', message: 'Select a word first.' }); return; }
     if (!isText) { setMiningDebug({ status: 'blocked', stage: 'validation', selectedWord: selectedText, error: 'Navigate to text first.', updatedAt: new Date().toISOString() }); setStatus({ type: 'error', message: 'Navigate to text first.' }); return; }
     const novelSentence = currentData?.plainText || '';
-    setMiningDebug({ status: 'running', stage: 'start', startedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), selectedWord: selectedText, noteType, scene: `${itemIndex + 1} / ${totalScenes}`, chapterTitle: currentData?.chapterTitle || '', novelSentence });
+    const analyzerCandidate = learningOwnership.source === 'jp-analyzer'
+      ? analyzerLearningModel?.miningCandidates?.find(candidate =>
+          candidate.start === analyzerMiningSelection?.spanStart && candidate.end === analyzerMiningSelection?.spanEnd)
+      : null;
+    if (learningOwnership.source === 'jp-analyzer' && !analyzerCandidate) {
+      setMiningDebug({ status: 'blocked', stage: 'eligibility', selectedWord: selectedText, error: 'Select within one analyzer-eligible span.', updatedAt: new Date().toISOString() });
+      setStatus({ type: 'error', message: 'Select one analyzer-eligible word or grammar span.' });
+      return;
+    }
+    const miningLookupKey = analyzerCandidate ? getAnalyzerMiningLookupKey(analyzerCandidate) : selectedText;
+    setMiningDebug({ status: 'running', stage: 'start', startedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), selectedWord: selectedText, miningLookupKey, analyzerMiningSelection, learningSource: learningOwnership.source, noteType, scene: `${itemIndex + 1} / ${totalScenes}`, chapterTitle: currentData?.chapterTitle || '', novelSentence });
     setIsWorking(true); setEnrichResult(null); setStatus({ type: 'working', message: 'Connecting to Anki...' });
     try {
       updateMiningDebug({ status: 'running', stage: 'checkAnkiConnect' }); await checkAnkiConnect();
@@ -807,7 +853,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
       if (!noteResult.note) { updateMiningDebug({ status: 'error', stage: 'findLatestNote', error: 'No Kiku note found.' }); setStatus({ type: 'error', message: 'No Kiku note found.' }); setIsWorking(false); return; }
       const noteId = noteResult.note.noteId;
       updateMiningDebug({ status: 'running', stage: 'enrichment' });
-      const result = await autoEnrichWordWithFallback(selectedText, novelSentence, ankiRequest, noteType, msg => { updateMiningDebug({ status: 'running', stage: msg }); setStatus({ type: 'working', message: msg }); });
+      const result = await autoEnrichWordWithFallback(miningLookupKey, novelSentence, ankiRequest, noteType, msg => { updateMiningDebug({ status: 'running', stage: msg }); setStatus({ type: 'working', message: msg }); });
       setEnrichResult(result);
       updateMiningDebug({ status: 'running', stage: 'enrichmentComplete', enrichmentMethod: result.method || '', source: result.source || '', mode: result.mode || '', unknownCount: result.unknownCount ?? null, chosenSentence: result.sentence || '', sentenceFurigana: result.sentenceFurigana || '', hasAudioUrl: Boolean(result.audioUrl), hasImageUrl: Boolean(result.imageUrl), audioUrl: result.audioUrl || '', imageUrl: result.imageUrl || '' });
       setStatus({ type: 'working', message: 'Downloading media...' });
@@ -817,7 +863,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
       else if (result.audioUrl) { try { updateMiningDebug({ status: 'running', stage: 'nadeshikoAudio' }); const filename = `nade_audio_${Date.now()}.mp3`; await ankiRequest('storeMediaFile', { filename, url: result.audioUrl }); fieldUpdates[fields.sentenceAudio] = `[sound:${filename}]`; updateMiningDebug({ sentenceAudio: `[sound:${filename}]` }); } catch (e) { updateMiningDebug({ audioError: e?.message || String(e) }); } }
       if (result.method !== 'voicevox' && result.imageUrl) { try { updateMiningDebug({ status: 'running', stage: 'nadeshikoImage' }); const filename = `nade_img_${Date.now()}.jpg`; await ankiRequest('storeMediaFile', { filename, url: result.imageUrl }); fieldUpdates[fields.picture] = `<img src="${filename}">`; updateMiningDebug({ picture: `<img src="${filename}">` }); } catch (e) { updateMiningDebug({ imageError: e?.message || String(e) }); } }
       updateMiningDebug({ status: 'running', stage: 'updateNoteFields', preparedFields: fieldUpdates }); await updateNoteFields(noteId, fieldUpdates);
-      addKnownWord(selectedText); setCacheVersion(v => v + 1); try { await ankiRequest('guiBrowse', { query: `nid:${noteId}` }); } catch (e) {}
+      if (learningOwnership.source === 'legacy-kuromoji' || analyzerCandidate?.knownLookupKey) addKnownWord(miningLookupKey); setCacheVersion(v => v + 1); try { await ankiRequest('guiBrowse', { query: `nid:${noteId}` }); } catch (e) {}
       updateMiningDebug({ status: 'completed', stage: 'done', updatedNoteId: noteId, preparedFields: fieldUpdates }); setStatus({ type: 'ok', message: `Card updated — ${result.source}${result.mode ? ` (${result.mode})` : ''}` });
     } catch (err) { updateMiningDebug({ status: 'error', stage: 'failed', error: err?.message || String(err) }); setStatus({ type: 'error', message: err?.message || String(err) }); }
     setIsWorking(false);
@@ -922,7 +968,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
                         type="button"
                         className={`word-badge ${uw.freq?.category ? `word-freq-${uw.freq.category}` : 'word-freq-unlisted'}`}
                         title={`${uw.freq ? `Rank ${uw.freq.rank} · ${uw.freq.category}` : 'Unlisted'} · Click to select`}
-                        onClick={() => setSelectedText(uw.word)}>
+                        onClick={() => selectNewWord(uw)}>
                         {display}
                       </button>
                       <button
@@ -1023,7 +1069,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   <div className="debug-empty">
     JP Analyzer and Plain Text modes use authoritative analyzer comprehension
     and New Words. Legacy Kuromoji mode retains the legacy learning model.
-    Mining remains on the legacy path until Phase 5.2B.
+    Mining uses exact analyzer-owned span offsets in JP Analyzer and Plain Text modes.
   </div>
   <div className="debug-summary-grid">
     <div className="debug-mini-card"><span>Requested source</span><strong>{colorSource}</strong></div>
