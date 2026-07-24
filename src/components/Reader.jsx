@@ -13,6 +13,8 @@ import { findAdjacentTextScenes } from '../lib/scenePrefetch.js';
 import { resolveAnalyzerPresentationClass } from '../lib/analyzerPresentationPolicy.js';
 import { buildAnalyzerLearningModel, resolveLearningOwnership } from '../lib/analyzerLearningModel.js';
 import { createAnalyzerReaderContext, getAnalyzerMiningLookupKey, getAnalyzerSelectionActionState, resolveAnalyzerReaderContextForOffsets } from '../lib/analyzerMiningSelection.js';
+import { buildDebugReportV2, buildDiagnosticSummaryV2 } from '../lib/debugReportV2.js';
+import { ANALYZER_METADATA_LEASE_MS, getAnalyzerMetadataLease } from '../lib/analyzerMetadataLease.js';
 import {
   COLOR_SOURCES,
   normalizeColorSource,
@@ -103,77 +105,6 @@ function getWordColorClass(wordOrToken) {
 }
 
 
-function yesNo(value) { return value ? 'yes' : 'no'; }
-function truncateDebugText(text, maxLength = 80) {
-  const source = String(text || '').replace(/[\n\r\t]+/g, ' ').replace(/\s+/g, ' ').trim();
-  return source.length <= maxLength ? source : `${source.slice(0, maxLength)}...`;
-}
-function safeJson(value) { try { return JSON.stringify(value ?? null, null, 2); } catch { return String(value || ''); } }
-function getDisplayItemData(displayItem) { return displayItem?.data || displayItem || null; }
-function getDisplayItemType(displayItem) {
-  if (!displayItem) return 'none';
-  if (displayItem.type === 'illustration') return 'image';
-  if (displayItem.type === 'scene') return 'sentence';
-  return displayItem.type || getDisplayItemData(displayItem)?.type || 'unknown';
-}
-function getDisplayItemPreview(displayItem) {
-  const data = getDisplayItemData(displayItem);
-  if (!data) return '';
-  if (getDisplayItemType(displayItem) === 'image') return data.alt || '[image]';
-  return truncateDebugText(data.plainText || data.htmlText || '', 90);
-}
-function getDebugTokenRows(currentData) {
-  if (!currentData || currentData.type === 'image') return [];
-  const sourceTokens = (currentData.classifiedWords && currentData.classifiedWords.length) ? currentData.classifiedWords : (currentData.tokens || []);
-  return sourceTokens.map((token, index) => {
-    const key = getTokenKnownKey(token);
-    const freq = key ? getFrequency(key) : null;
-    return {
-      index, surface: token.surface || '', dictionaryForm: token.dictionaryForm || token.surface || '',
-      pos: token.pos || '', posDetail1: token.posDetail1 || '', posDetail2: token.posDetail2 || '', posDetail3: token.posDetail3 || '',
-      tokenCategory: token.tokenCategory || '', colorRole: token.colorRole || '', colorClass: getWordColorClass(token),
-      known: key ? isKnownWord(key) : false, manualKnown: key ? isManualKnownWord(key) : false,
-      frequency: freq ? `${freq.rank} / ${freq.category}` : 'unlisted',
-      countsForComprehension: Boolean(token.countsForComprehension), showInNewWords: Boolean(token.showInNewWords)
-    };
-  });
-}
-function getSceneDebugSummary({ currentData, displayItem, itemIndex, totalScenes, isText, isImage, selectedText, unknownWords, comprehension, currentChapterImages }) {
-  if (!currentData) return [];
-  return [
-    ['scene', `${itemIndex + 1} / ${totalScenes}`], ['displayItemType', getDisplayItemType(displayItem)], ['dataType', currentData.type || (isImage ? 'image' : 'sentence')],
-    ['isText', yesNo(isText)], ['isImage', yesNo(isImage)], ['chapter', currentData.chapterTitle || ''], ['chapterIndex', String(currentData.chapterIndex ?? '')],
-    ['selectedText', selectedText || ''], ['unknownWords', String((unknownWords || []).length)], ['comprehension', comprehension ? `${comprehension.percent}% (${comprehension.known}/${comprehension.total})` : 'n/a'],
-    ['plainTextLength', String((currentData.plainText || '').length)], ['htmlTextLength', String((currentData.htmlText || '').length)], ['tokens', String((currentData.tokens || []).length)],
-    ['classifiedWords', String((currentData.classifiedWords || []).length)], ['displayWords', String((currentData.displayWords || []).length)], ['comprehensionWords', String((currentData.comprehensionWords || []).length)],
-    ['miningCandidates', String((currentData.miningCandidates || []).length)], ['chapterImages', String((currentChapterImages || []).length)], ['imageAlt', isImage ? (currentData.alt || '') : ''], ['imageDataUri', isImage ? yesNo(Boolean(currentData.dataUri)) : '']
-  ];
-}
-function getNearbySceneRows(displayItems, itemIndex) {
-  const rows = [];
-  for (let offset = -2; offset <= 2; offset += 1) {
-    const index = itemIndex + offset;
-    if (index < 0 || index >= displayItems.length) continue;
-    const displayItem = displayItems[index]; const data = getDisplayItemData(displayItem);
-    rows.push({ index, relative: offset === 0 ? 'current' : (offset > 0 ? `+${offset}` : String(offset)), type: getDisplayItemType(displayItem), chapterIndex: data?.chapterIndex ?? '', chapterTitle: data?.chapterTitle || '', preview: getDisplayItemPreview(displayItem), parserDebug: data?.parserDebug || null });
-  }
-  return rows;
-}
-function getMiningDebugRows(miningDebug) {
-  if (!miningDebug) return [];
-  return [['status', miningDebug.status || ''], ['stage', miningDebug.stage || ''], ['startedAt', miningDebug.startedAt || ''], ['updatedAt', miningDebug.updatedAt || ''], ['selectedWord', miningDebug.selectedWord || ''], ['noteType', miningDebug.noteType || ''], ['scene', miningDebug.scene || ''], ['chapter', miningDebug.chapterTitle || ''], ['latestNoteQuery', miningDebug.latestNoteQuery || ''], ['latestNoteId', miningDebug.latestNoteId ? String(miningDebug.latestNoteId) : ''], ['latestNoteCount', miningDebug.latestNoteCount != null ? String(miningDebug.latestNoteCount) : ''], ['enrichmentMethod', miningDebug.enrichmentMethod || ''], ['source', miningDebug.source || ''], ['mode', miningDebug.mode || ''], ['unknownCount', miningDebug.unknownCount != null ? String(miningDebug.unknownCount) : ''], ['hasAudioUrl', miningDebug.hasAudioUrl != null ? yesNo(miningDebug.hasAudioUrl) : ''], ['hasImageUrl', miningDebug.hasImageUrl != null ? yesNo(miningDebug.hasImageUrl) : ''], ['sentenceAudio', miningDebug.sentenceAudio || ''], ['picture', miningDebug.picture || ''], ['error', miningDebug.error || '']];
-}
-function getParserDebugRows(currentData, displayItem, book) {
-  const data = currentData || getDisplayItemData(displayItem) || {}; const parser = data.parserDebug || {}; const bookDebug = book?.debug || {};
-  return [['bookDebugAvailable', yesNo(Boolean(bookDebug && Object.keys(bookDebug).length))], ['tocCount', String(bookDebug.tocCount ?? '')], ['totalItems', String(bookDebug.totalItems ?? '')], ['sentenceCount', String(bookDebug.sentenceCount ?? '')], ['imageCount', String(bookDebug.imageCount ?? '')], ['pageHref', parser.pageHref || ''], ['pageIndex', parser.pageIndex != null ? String(parser.pageIndex) : ''], ['orderedIndex', parser.orderedIndex != null ? String(parser.orderedIndex) : ''], ['itemType', parser.itemType || getDisplayItemType(displayItem)], ['chapterIndex', parser.chapterIndex != null ? String(parser.chapterIndex) : String(data.chapterIndex ?? '')], ['chapterTitle', parser.chapterTitle || data.chapterTitle || ''], ['imageSrc', parser.imageSrc || ''], ['resolvedZipPath', parser.resolvedZipPath || ''], ['imageExists', parser.imageExists != null ? yesNo(parser.imageExists) : ''], ['dataUri', parser.hasDataUri != null ? yesNo(parser.hasDataUri) : yesNo(Boolean(data.dataUri))], ['alt', parser.alt || data.alt || ''], ['plainTextLength', parser.plainTextLength != null ? String(parser.plainTextLength) : String((data.plainText || '').length)], ['htmlTextLength', parser.htmlTextLength != null ? String(parser.htmlTextLength) : String((data.htmlText || '').length)]];
-}
-function getChapterDebugRows(book, chapterImageLists) {
-  const chapters = book?.debug?.chapterList || [];
-  return chapters.map((chapter, index) => ({ index, title: chapter.title || '', sentenceCount: chapter.sentenceCount ?? '', imageCount: chapter.imageCount ?? (chapterImageLists?.[index]?.length ?? 0), preview: chapter.preview || '' }));
-}
-function buildDebugReport({ book, itemIndex, totalScenes, currentData, currentDisplayItem, selectedText, comprehension, unknownWords, debugTokenRows, debugSceneRows, debugNearbyRows, parserDebugRows, chapterDebugRows, miningDebug, ankiStatus, globalFreqReady, forceTts, readerStyle, showFurigana, verticalMode }) {
-  return { app: { name: 'Novel Audio Miner', debugVersion: 'v5-export-report', generatedAt: new Date().toISOString() }, book: { id: book?.id || '', fileName: book?.fileName || '', title: book?.title || '', author: book?.author || '', tocCount: book?.toc?.length || 0, chapterCount: book?.chapters?.length || 0, debug: book?.debug || null }, reader: { sceneIndex: itemIndex, sceneNumber: itemIndex + 1, totalScenes, selectedText: selectedText || '', showFurigana: Boolean(showFurigana), verticalMode: Boolean(verticalMode), readerStyle, ankiStatus, globalFreqReady: Boolean(globalFreqReady), forceTts: Boolean(forceTts) }, currentScene: { displayItemType: getDisplayItemType(currentDisplayItem), chapterIndex: currentData?.chapterIndex ?? null, chapterTitle: currentData?.chapterTitle || '', plainText: currentData?.plainText || '', htmlText: currentData?.htmlText || '', imageAlt: currentData?.alt || '', hasImageDataUri: Boolean(currentData?.dataUri), parserDebug: currentData?.parserDebug || null }, comprehension: comprehension || null, unknownWords: (unknownWords || []).map(item => ({ word: item.word || '', surface: item.surface || '', frequency: item.freq || null })), debugPanels: { sceneRows: debugSceneRows, tokenRows: debugTokenRows, nearbyRows: debugNearbyRows, parserRows: parserDebugRows, chapterRows: chapterDebugRows, mining: miningDebug || null } };
-}
 function downloadJsonFile(filename, data) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = filename; document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
 }
@@ -412,6 +343,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   const [sessionToken, setSessionToken] = useState(() => { try { return localStorage.getItem('nadeshiko_session_token') || ''; } catch { return ''; } });
   const [forceTts, setForceTts] = useState(() => { try { return localStorage.getItem('force_tts') === 'true'; } catch { return false; } });
   const [debugMode, setDebugMode] = useState(saved.debugMode ?? false);
+  const [includeFullParserInventory, setIncludeFullParserInventory] = useState(false);
   const hasSavedColorSource = Object.prototype.hasOwnProperty.call(
     saved,
     'colorSource'
@@ -713,10 +645,98 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     if (num >= 1 && num <= totalScenes) { setItemIndex(num - 1); setGoInput(''); }
   }
 
+  function createCurrentDebugReport() {
+    const actionState = getAnalyzerActionState();
+    return buildDebugReportV2({
+      application: {
+        name: 'Novel Audio Miner',
+        version: '4.1.0',
+        colorSource,
+        activeColorSource,
+        learningSource: learningOwnership.source
+      },
+      book,
+      reader: {
+        sceneIndex: itemIndex,
+        sceneNumber: itemIndex + 1,
+        totalScenes,
+        selectedText: selectedText || '',
+        showFurigana: Boolean(showFurigana),
+        verticalMode: Boolean(verticalMode),
+        readerStyle,
+        ankiStatus,
+        globalFreqReady: Boolean(globalFreqReady),
+        forceTts: Boolean(forceTts)
+      },
+      scene: {
+        displayItemType: isImage ? 'image' : (isText ? 'sentence' : 'none'),
+        chapterIndex: currentData?.chapterIndex ?? null,
+        chapterTitle: currentData?.chapterTitle || '',
+        plainText: currentData?.plainText || '',
+        htmlText: currentData?.htmlText || '',
+        imageAlt: currentData?.alt || '',
+        hasImageDataUri: Boolean(currentData?.dataUri),
+        parserDebug: currentData?.parserDebug || null
+      },
+      adjacentScenes: displayItems.slice(Math.max(0, itemIndex - 2), itemIndex + 3).map((item, offset) => {
+        const absoluteIndex = Math.max(0, itemIndex - 2) + offset;
+        const data = item?.data || null;
+        return {
+          index: absoluteIndex,
+          relative: absoluteIndex - itemIndex,
+          type: item?.type === 'illustration' ? 'image' : 'sentence',
+          chapterIndex: data?.chapterIndex ?? null,
+          chapterTitle: data?.chapterTitle || '',
+          plainText: data?.plainText || '',
+          parserDebug: data?.parserDebug || null
+        };
+      }),
+      analyzerShadow: jpAnalyzerShadow,
+      analyzerReader: jpAnalyzerReader,
+      analyzerResult: jpAnalyzerShadow?.result || null,
+      metadataLease: getAnalyzerMetadataLease(),
+      metadataLeaseMs: ANALYZER_METADATA_LEASE_MS,
+      presentationSpans: jpAnalyzerReader.words.map(span => ({
+        start: span.start,
+        end: span.end,
+        surface: span.surface,
+        displayRole: span.displayRole,
+        className: getWordColorClass(span),
+        known: span.knownLookupKey ? isKnownWord(span.knownLookupKey) : false,
+        frequency: span.frequencyLookupKey ? getFrequency(span.frequencyLookupKey) : null
+      })),
+      learning: {
+        available: learningOwnership.available,
+        source: learningOwnership.source,
+        comprehension,
+        newWords: unknownWords
+      },
+      selection: {
+        raw: selectedText || '',
+        readerContext: selectedReaderContext,
+        actionState,
+        issue: selectionIssue || null
+      },
+      mining: {
+        candidate: selectedReaderContext?.eligibleForMining ? selectedReaderContext : null,
+        lookupIdentity: selectedReaderContext ? getAnalyzerMiningLookupKey(selectedReaderContext) : null,
+        debug: miningDebug,
+        enrichment: enrichResult,
+        working: isWorking
+      },
+      prefetchTargets: adjacentTextScenes.ordered,
+      includeFullParserInventory
+    });
+  }
+
   function handleExportDebugReport() {
-    const report = buildDebugReport({ book, itemIndex, totalScenes, currentData, currentDisplayItem, selectedText, comprehension, unknownWords, debugTokenRows, debugSceneRows, debugNearbyRows, parserDebugRows, chapterDebugRows, miningDebug, ankiStatus, globalFreqReady, forceTts, readerStyle, showFurigana, verticalMode });
+    const report = createCurrentDebugReport();
     const safeTitle = cleanBookTitle(book?.title || book?.fileName || 'book').replace(/[\/:*?"<>|\s]+/g, '_').slice(0, 60) || 'book';
-    downloadJsonFile(`novel-audio-miner-debug-${safeTitle}-scene-${itemIndex + 1}.json`, report);
+    downloadJsonFile(`novel-audio-miner-debug-v2-${safeTitle}-scene-${itemIndex + 1}.json`, report);
+  }
+
+  function handleCopyDiagnosticSummary() {
+    navigator.clipboard?.writeText(buildDiagnosticSummaryV2(createCurrentDebugReport()));
   }
 
   function updateMiningDebug(patch) {
@@ -772,31 +792,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
 
   const hasDialogueColumns = Boolean(verticalMode && !showFurigana && isText && currentData?.plainText?.includes('\n'));
   const currentDisplayItem = displayItems[itemIndex] || null;
-  const debugTokenRows = useMemo(() => getDebugTokenRows(currentData), [currentData, cacheVersion, globalFreqReady]);
-  const debugSceneRows = useMemo(() => getSceneDebugSummary({ currentData, displayItem: currentDisplayItem, itemIndex, totalScenes, isText, isImage, selectedText, unknownWords, comprehension, currentChapterImages }), [currentData, currentDisplayItem, itemIndex, totalScenes, isText, isImage, selectedText, unknownWords, comprehension, currentChapterImages]);
-  const debugNearbyRows = useMemo(() => getNearbySceneRows(displayItems, itemIndex), [displayItems, itemIndex]);
-  const miningDebugRows = useMemo(() => getMiningDebugRows(miningDebug), [miningDebug]);
-  const parserDebugRows = useMemo(() => getParserDebugRows(currentData, currentDisplayItem, book), [currentData, currentDisplayItem, book]);
-  const chapterDebugRows = useMemo(() => getChapterDebugRows(book, chapterImageLists), [book, chapterImageLists]);
-  const selectedDebugToken = useMemo(() => {
-    if (!selectedText) return null;
-    return debugTokenRows.find(row => row.surface === selectedText || row.dictionaryForm === selectedText) || null;
-  }, [debugTokenRows, selectedText]);
-  const debugTokenSummary = useMemo(() => {
-    const summary = { learning: 0, knownLearning: 0, unknownLearning: 0, grammar: 0, names: 0, numeric: 0 };
-    for (const row of debugTokenRows) {
-      if (row.tokenCategory === 'learning') {
-        summary.learning += 1;
-        if (row.known) summary.knownLearning += 1;
-        else summary.unknownLearning += 1;
-      } else if (row.tokenCategory === 'proper-noun') summary.names += 1;
-      else if (row.tokenCategory === 'numeric') summary.numeric += 1;
-      else summary.grammar += 1;
-    }
-    return summary;
-  }, [debugTokenRows]);
-  const parserSummaryRows = useMemo(() => parserDebugRows.filter(([label]) => ['pageHref', 'orderedIndex', 'itemType', 'chapterIndex', 'chapterTitle', 'imageSrc', 'resolvedZipPath', 'imageExists', 'dataUri'].includes(label)), [parserDebugRows]);
-  const miningSummaryRows = useMemo(() => miningDebugRows.filter(([label]) => ['status', 'stage', 'selectedWord', 'latestNoteId', 'enrichmentMethod', 'source', 'mode', 'sentenceAudio', 'picture', 'error'].includes(label)), [miningDebugRows]);
+
 
   return (
     <>
@@ -950,9 +946,13 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
                 <div className="debug-mini-card"><span>Result source</span><strong>{jpAnalyzerShadow?.source ?? '-'}</strong></div>
                 <div className="debug-mini-card"><span>Scene</span><strong>{itemIndex + 1} / {totalScenes}</strong></div>
               </div>
+              <label style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '8px', fontSize: '10px', color: 'var(--muted)' }}>
+                <input type="checkbox" checked={includeFullParserInventory} onChange={event => setIncludeFullParserInventory(event.target.checked)} />
+                Include full EPUB parser inventory
+              </label>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
                 <button type="button" className="debug-export-btn" onClick={handleExportDebugReport}>Export Debug Report</button>
-                <button type="button" className="secondary" onClick={() => navigator.clipboard?.writeText(`scene=${itemIndex + 1}; analyzer=${jpAnalyzerShadow?.status ?? 'idle'}; contract=${jpAnalyzerReader.valid ? 'valid' : 'invalid'}; source=${jpAnalyzerShadow?.source ?? '-'}`)}>Copy Diagnostic Summary</button>
+                <button type="button" className="secondary" onClick={handleCopyDiagnosticSummary}>Copy Diagnostic Summary</button>
                 <button type="button" className="secondary" onClick={clearJpAnalyzerShadowCache}>Clear Analyzer Cache</button>
               </div>
             </div>
