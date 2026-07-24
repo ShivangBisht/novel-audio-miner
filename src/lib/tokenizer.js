@@ -10,32 +10,18 @@
 
 let tokenizer = null;
 let loadingPromise = null;
+let scriptLoadingPromise = null;
+const SCRIPT_URL='https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/build/kuromoji.min.js';
+const DICT_URL='https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/dict/';
+function loadScript(){if(globalThis.window?.kuromoji)return Promise.resolve(window.kuromoji);if(scriptLoadingPromise)return scriptLoadingPromise;if(!globalThis.document)return Promise.reject(new Error('Legacy Kuromoji requires a browser.'));scriptLoadingPromise=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src=SCRIPT_URL;script.async=true;script.dataset.namKuromoji='true';script.onload=()=>window.kuromoji?resolve(window.kuromoji):reject(new Error('Kuromoji did not initialize.'));script.onerror=()=>reject(new Error('Could not load Kuromoji legacy runtime.'));document.head.appendChild(script);}).catch(e=>{scriptLoadingPromise=null;throw e;});return scriptLoadingPromise;}
 
 export function loadTokenizer() {
   if (tokenizer) return Promise.resolve(tokenizer);
   if (loadingPromise) return loadingPromise;
 
-  loadingPromise = new Promise((resolve, reject) => {
-    try {
-      const kuromoji = window.kuromoji;
-      if (!kuromoji) {
-        reject(new Error('kuromoji not loaded. Add script to index.html'));
-        return;
-      }
-
-      kuromoji.builder({ dicPath: 'https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/dict/' }).build((err, tok) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        tokenizer = tok;
-        resolve(tokenizer);
-      });
-    } catch (error) {
-      reject(error);
-    }
-  });
+  loadingPromise = loadScript().then(kuromoji => new Promise((resolve, reject) => {
+    kuromoji.builder({ dicPath: DICT_URL }).build((err, tok) => { if (err) return reject(err); tokenizer = tok; resolve(tok); });
+  })).catch(error => { loadingPromise = null; throw error; });
 
   return loadingPromise;
 }

@@ -19,9 +19,10 @@
     "test:analyzer-learning-model": "node scripts/test-analyzer-learning-model.mjs",
     "test:phase5-shadow": "npm run test:phase4 && npm run test:analyzer-learning-model",
     "test:analyzer-learning-activation": "node scripts/test-analyzer-learning-activation.mjs",
-    "test:phase5": "npm run test:phase5-shadow && npm run test:analyzer-learning-activation && npm run test:analyzer-mining-selection && npm run test:analyzer-selection-ownership",
+    "test:phase5": "npm run test:phase5-shadow && npm run test:analyzer-learning-activation && npm run test:analyzer-mining-selection && npm run test:analyzer-selection-ownership && npm run test:legacy-tokenizer-isolation",
     "test:analyzer-mining-selection": "node scripts/test-analyzer-mining-selection.mjs",
-    "test:analyzer-selection-ownership": "node scripts/test-analyzer-selection-ownership.mjs"
+    "test:analyzer-selection-ownership": "node scripts/test-analyzer-selection-ownership.mjs",
+    "test:legacy-tokenizer-isolation": "node scripts/test-legacy-tokenizer-isolation.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.3",

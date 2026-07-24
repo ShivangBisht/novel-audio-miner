@@ -1,12 +1,7 @@
 import JSZip from 'jszip';
 import { splitJapaneseSentences } from './japaneseSentenceSplitter.js';
-import { loadTokenizer, tokenizeText } from './tokenizer.js';
-import { classifyTokens, getDisplayWords, getComprehensionWords, getMiningCandidates } from './wordModel.js';
 
 export async function parseEpubFile(file) {
-  // Ensure tokenizer is loaded before parsing
-  await loadTokenizer();
-
   const zip = await JSZip.loadAsync(await file.arrayBuffer());
   const container = parseXml(await readZipText(zip, 'META-INF/container.xml'));
   const opfPath = container.querySelector('rootfile')?.getAttribute('full-path');
@@ -29,19 +24,6 @@ export async function parseEpubFile(file) {
   }
 
   await fillImageDataUris(rawPages, zip);
-
-  for (const page of rawPages) {
-    for (const item of (page.orderedItems || [])) {
-      if (item.type === 'sentence' && item.plainText) {
-        item.tokens = tokenizeText(item.plainText);
-        item.classifiedWords = classifyTokens(item.tokens);
-        item.displayWords = getDisplayWords(item.classifiedWords);
-        item.comprehensionWords = getComprehensionWords(item.classifiedWords);
-        item.miningCandidates = getMiningCandidates(item.classifiedWords);
-        item.contentWords = item.displayWords;
-      }
-    }
-  }
 
   const chapters = buildSectionsFromToc(rawPages, toc);
   const pageChapterMap = new Map();
@@ -72,12 +54,6 @@ export async function parseEpubFile(file) {
           htmlText: oi.htmlText || '',
           chapterIndex: chapterIdx,
           chapterTitle,
-          tokens: oi.tokens || [],
-          classifiedWords: oi.classifiedWords || [],
-          displayWords: oi.displayWords || oi.contentWords || [],
-          comprehensionWords: oi.comprehensionWords || oi.contentWords || [],
-          miningCandidates: oi.miningCandidates || oi.contentWords || [],
-          contentWords: oi.contentWords || [],
           parserDebug: { ...(oi.parserDebug || {}), chapterIndex: chapterIdx, chapterTitle }
         });
       }

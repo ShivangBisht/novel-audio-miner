@@ -14,6 +14,7 @@ import { adaptCompactAnalysisToReaderWords } from '../lib/analyzerWordAdapter.js
 import { adaptReaderSpansForRendering } from '../lib/analyzerReaderSpanAdapter.js';
 import { compareReaderWordModels } from '../lib/analyzerShadowComparison.js';
 import { findAdjacentTextScenes } from '../lib/scenePrefetch.js';
+import { getLegacyKuromojiSceneModel } from '../lib/legacyKuromojiSceneModel.js';
 import { resolveAnalyzerPresentationClass } from '../lib/analyzerPresentationPolicy.js';
 import { buildAnalyzerLearningModel, resolveLearningOwnership } from '../lib/analyzerLearningModel.js';
 import { createAnalyzerReaderContext, getAnalyzerMiningLookupKey, getAnalyzerSelectionActionState, resolveAnalyzerReaderContextForOffsets } from '../lib/analyzerMiningSelection.js';
@@ -405,6 +406,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   const [selectedText, setSelectedText] = useState('');
   const [selectedReaderContext, setSelectedReaderContext] = useState(null);
   const [selectionIssue, setSelectionIssue] = useState('');
+  const [legacySceneState,setLegacySceneState]=useState({status:'idle',model:null,error:null});
   const [noteType, setNoteType] = useState(() => saved.noteType || 'Kiku');
   const [fields, setFields] = useState(() => ({ ...DEFAULT_FIELDS, ...(saved.fields || {}) }));
 
@@ -502,20 +504,22 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     jpAnalyzerShadow?.result
   ]);
 
+  useEffect(() => { let cancelled=false; if(colorSource!==COLOR_SOURCES.LEGACY_KUROMOJI||!isText||!currentData?.plainText){setLegacySceneState({status:'idle',model:null,error:null});return()=>{cancelled=true;};} setLegacySceneState({status:'loading',model:null,error:null});getLegacyKuromojiSceneModel(currentData.plainText).then(model=>{if(!cancelled)setLegacySceneState({status:'ready',model,error:null});}).catch(error=>{if(!cancelled)setLegacySceneState({status:'error',model:null,error});});return()=>{cancelled=true;};},[colorSource,isText,currentData?.plainText]);
+  const legacySceneModel=legacySceneState.model;
+
   const jpAnalyzerComparison = useMemo(() => {
     if (!isText || !jpAnalyzerLegacyAdapted.valid) return null;
 
     return compareReaderWordModels({
       text: currentData?.plainText ?? '',
       kuromojiWords:
-        currentData?.classifiedWords ?? currentData?.tokens ?? [],
+        legacySceneModel?.classifiedWords ?? legacySceneModel?.tokens ?? [],
       analyzerWords: jpAnalyzerLegacyAdapted.words
     });
   }, [
     isText,
     currentData?.plainText,
-    currentData?.classifiedWords,
-    currentData?.tokens,
+    legacySceneModel,
     jpAnalyzerLegacyAdapted
   ]);
 
@@ -529,7 +533,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     analyzerReady: jpAnalyzerPreviewAvailable,
     analyzerWords: jpAnalyzerReader.words,
     legacyWords:
-      currentData?.displayWords || currentData?.contentWords || []
+      legacySceneModel?.displayWords || legacySceneModel?.contentWords || []
   });
 
   const activeDisplayWords = colourSourceResolution.words;
@@ -539,18 +543,18 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
 
   const legacyComprehension = useMemo(() => {
     if (!isText) return null;
-    const words = currentData?.comprehensionWords || currentData?.contentWords || [];
+    const words = legacySceneModel?.comprehensionWords || legacySceneModel?.contentWords || [];
     if (words.length === 0) return null;
     let known = 0;
     for (const w of words) {
       if (isTokenKnownForLearning(w)) known++;
     }
     return { known, total: words.length, percent: Math.round((known / words.length) * 100) };
-  }, [currentData, isText, cacheVersion]);
+  }, [legacySceneModel, isText, cacheVersion]);
 
   const legacyUnknownWords = useMemo(() => {
     if (!isText) return [];
-    const sourceWords = currentData?.miningCandidates || currentData?.contentWords || [];
+    const sourceWords = legacySceneModel?.miningCandidates || legacySceneModel?.contentWords || [];
     const seen = new Set();
     const result = [];
     for (const w of sourceWords) {
@@ -560,7 +564,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
       result.push({ word: form, surface: w.surface, freq: getFrequency(form) });
     }
     return result;
-  }, [currentData, isText, cacheVersion, globalFreqReady]);
+  }, [legacySceneModel, isText, cacheVersion, globalFreqReady]);
 
   const analyzerLearningModel = useMemo(() => {
     if (!isText || !jpAnalyzerReader.valid) return null;
@@ -598,7 +602,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
       legacy: {
         comprehension: legacyComprehension,
         newWords: legacyUnknownWords,
-        miningCandidateCount: (currentData?.miningCandidates || currentData?.contentWords || []).length
+        miningCandidateCount: (legacySceneModel?.miningCandidates || legacySceneModel?.contentWords || []).length
       },
       activeSource: learningOwnership.source,
       error: analyzerLearningModel ? null : 'Analyzer learning model is unavailable.'
@@ -609,7 +613,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     analyzerLearningModel,
     legacyComprehension,
     legacyUnknownWords,
-    currentData,
+    legacySceneModel,
     learningOwnership.source
   ]);
 
@@ -756,11 +760,11 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     if (!target) return [];
     const candidates = new Set();
     const tokenSources = [
-      ...(currentData?.miningCandidates || []),
-      ...(currentData?.displayWords || []),
-      ...(currentData?.contentWords || []),
-      ...(currentData?.classifiedWords || []),
-      ...(currentData?.tokens || [])
+      ...(legacySceneModel?.miningCandidates || []),
+      ...(legacySceneModel?.displayWords || []),
+      ...(legacySceneModel?.contentWords || []),
+      ...(legacySceneModel?.classifiedWords || []),
+      ...(legacySceneModel?.tokens || [])
     ];
     for (const token of tokenSources) {
       const surface = String(token?.surface || '').trim();
@@ -790,10 +794,10 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     const target = String(word || '').trim();
     if (!target) return [];
     const tokenSources = [
-      ...(currentData?.classifiedWords || []),
-      ...(currentData?.displayWords || []),
-      ...(currentData?.miningCandidates || []),
-      ...(currentData?.tokens || [])
+      ...(legacySceneModel?.classifiedWords || []),
+      ...(legacySceneModel?.displayWords || []),
+      ...(legacySceneModel?.miningCandidates || []),
+      ...(legacySceneModel?.tokens || [])
     ];
     return tokenSources.filter(token => {
       const surface = String(token?.surface || '').trim();
@@ -1079,7 +1083,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
                   <option value={COLOR_SOURCES.PLAIN_TEXT}>Plain text</option>
                 </select>
                 <span style={{ fontSize: '10px' }}>
-                  JP Analyzer is the primary colour source. Legacy Kuromoji remains available for rollback. Invalid analyzer output is shown as neutral text.
+                  JP Analyzer is the primary source. Legacy Kuromoji loads lazily only when explicitly selected. Invalid analyzer output is shown as neutral text.
                 </span>
               </label>
               <label style={{ fontSize: '11px', color: 'var(--muted)', display: 'grid', gap: '4px' }}>Session Token: <input value={sessionToken} onChange={e => handleSaveSessionToken(e.target.value)} placeholder="Paste __Secure-nadeshiko.session_token" /><span style={{ fontSize: '10px' }}>F12 → Application → Cookies → nadeshiko.co</span></label>
@@ -1124,6 +1128,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     <div className="debug-mini-card"><span>Analyzer state</span><strong>{jpAnalyzerShadow?.status ?? 'idle'}</strong></div>
     <div className="debug-mini-card"><span>Analyzer available</span><strong>{String(jpAnalyzerPreviewAvailable)}</strong></div>
     <div className="debug-mini-card"><span>Neutral fallback</span><strong>{String(analyzerNeutralFallback)}</strong></div>
+    <div className="debug-mini-card"><span>Legacy model</span><strong>{legacySceneState.status}</strong></div>
   </div>
   {analyzerNeutralFallback && (
     <div className="debug-empty">
