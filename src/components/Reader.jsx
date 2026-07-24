@@ -16,7 +16,7 @@ import { compareReaderWordModels } from '../lib/analyzerShadowComparison.js';
 import { findAdjacentTextScenes } from '../lib/scenePrefetch.js';
 import { resolveAnalyzerPresentationClass } from '../lib/analyzerPresentationPolicy.js';
 import { buildAnalyzerLearningModel, resolveLearningOwnership } from '../lib/analyzerLearningModel.js';
-import { createAnalyzerMiningContext, getAnalyzerMiningLookupKey, resolveAnalyzerMiningCandidateForOffsets } from '../lib/analyzerMiningSelection.js';
+import { createAnalyzerReaderContext, getAnalyzerMiningLookupKey, getAnalyzerSelectionActionState, resolveAnalyzerReaderContextForOffsets } from '../lib/analyzerMiningSelection.js';
 import {
   COLOR_SOURCES,
   normalizeColorSource,
@@ -403,7 +403,8 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   const [verticalMode, setVerticalMode] = useState(() => saved.verticalMode ?? true);
   const [readerStyle, setReaderStyle] = useState(() => ({ ...DEFAULT_STYLE, ...(saved.readerStyle || {}) }));
   const [selectedText, setSelectedText] = useState('');
-  const [analyzerMiningSelection, setAnalyzerMiningSelection] = useState(null);
+  const [selectedReaderContext, setSelectedReaderContext] = useState(null);
+  const [selectionIssue, setSelectionIssue] = useState('');
   const [noteType, setNoteType] = useState(() => saved.noteType || 'Kiku');
   const [fields, setFields] = useState(() => ({ ...DEFAULT_FIELDS, ...(saved.fields || {}) }));
 
@@ -667,6 +668,12 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     loadData();
   }, []);
 
+  useEffect(() => {
+    setSelectedText('');
+    setSelectedReaderContext(null);
+    setSelectionIssue('');
+  }, [itemIndex]);
+
   async function checkAnkiStatus() {
     try { await checkAnkiConnect(); setAnkiStatus({ connected: true, message: 'Connected' }); }
     catch { setAnkiStatus({ connected: false, message: 'Not connected' }); }
@@ -682,64 +689,87 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
 
   function handleTextSelection() {
     setTimeout(() => {
-      const word = getSelectedWord();
-      if (!word) return;
-      setSelectedText(word);
-      setAnalyzerMiningSelection(null);
+      const rawSelectedText = getSelectedWord();
+      if (!rawSelectedText) return;
+      setSelectedText(rawSelectedText);
+      setSelectedReaderContext(null);
+      setSelectionIssue('');
       if (learningOwnership.source !== 'jp-analyzer') return;
+
       const selection = window.getSelection();
-      if (!selection || selection.isCollapsed || !selection.rangeCount || !sentenceBoxRef.current) return;
+      if (!selection || selection.isCollapsed || !selection.rangeCount || !sentenceBoxRef.current) {
+        setSelectionIssue('Analyzer structure is unavailable for this selection.');
+        return;
+      }
       const range = selection.getRangeAt(0);
       const startElement = range.startContainer.nodeType === Node.ELEMENT_NODE ? range.startContainer : range.startContainer.parentElement;
       const endElement = range.endContainer.nodeType === Node.ELEMENT_NODE ? range.endContainer : range.endContainer.parentElement;
       const startSpan = startElement?.closest?.('[data-analyzer-start][data-analyzer-end]');
       const endSpan = endElement?.closest?.('[data-analyzer-start][data-analyzer-end]');
-      if (!startSpan || !endSpan || !sentenceBoxRef.current.contains(startSpan) || !sentenceBoxRef.current.contains(endSpan)) return;
+      if (!startSpan || !endSpan || !sentenceBoxRef.current.contains(startSpan) || !sentenceBoxRef.current.contains(endSpan)) {
+        setSelectionIssue('Analyzer structure is unavailable for this selection.');
+        return;
+      }
       const spanStart = Number(startSpan.dataset.analyzerStart);
-      const spanEnd = Number(endSpan.dataset.analyzerEnd);
+      const spanEnd = Number(startSpan.dataset.analyzerEnd);
       const endSpanStart = Number(endSpan.dataset.analyzerStart);
       const endSpanEnd = Number(endSpan.dataset.analyzerEnd);
-      if (spanStart !== endSpanStart || spanEnd !== endSpanEnd) return;
-      const resolution = resolveAnalyzerMiningCandidateForOffsets(analyzerLearningModel?.miningCandidates, spanStart, spanEnd);
-      if (resolution.valid) {
-        setSelectedText(resolution.candidate.surface);
-        setAnalyzerMiningSelection(createAnalyzerMiningContext(resolution.candidate, spanStart, spanEnd));
+      if (spanStart !== endSpanStart || spanEnd !== endSpanEnd) {
+        setSelectionIssue('The selection crosses multiple analyzer spans.');
+        return;
       }
+      const resolution = resolveAnalyzerReaderContextForOffsets(
+        jpAnalyzerReader.words,
+        spanStart,
+        spanEnd,
+        rawSelectedText
+      );
+      if (!resolution.valid) {
+        setSelectionIssue('Select within one analyzer span.');
+        return;
+      }
+      setSelectedReaderContext(resolution.context);
+      setSelectedText(resolution.context.surface);
     }, 10);
   }
 
   function selectNewWord(newWord) {
-    setSelectedText(newWord.word);
     const span = newWord.analyzerSpan;
-    setAnalyzerMiningSelection(span ? createAnalyzerMiningContext(span, span.start, span.end) : null);
+    if (learningOwnership.source === 'jp-analyzer' && span) {
+      const context = createAnalyzerReaderContext(span, span.start, span.end, newWord.surface || newWord.word);
+      setSelectedReaderContext(context);
+      setSelectedText(context.surface);
+      setSelectionIssue('');
+      return;
+    }
+    setSelectedReaderContext(null);
+    setSelectionIssue('');
+    setSelectedText(newWord.word);
   }
 
   function getKnownKeyCandidates(word) {
+    if (learningOwnership.source === 'jp-analyzer') {
+      const key = String(selectedReaderContext?.knownLookupKey || '').trim();
+      return key ? [key] : [];
+    }
     const target = String(word || '').trim();
     if (!target) return [];
     const candidates = new Set();
     const tokenSources = [
-      ...(analyzerLearningModel?.comprehension?.spans || []),
-      ...(analyzerLearningModel?.newWords || []),
       ...(currentData?.miningCandidates || []),
       ...(currentData?.displayWords || []),
       ...(currentData?.contentWords || []),
       ...(currentData?.classifiedWords || []),
       ...(currentData?.tokens || [])
     ];
-
     for (const token of tokenSources) {
       const surface = String(token?.surface || '').trim();
-      const dictionaryForm = String(
-        token?.key || token?.knownLookupKey || token?.dictionaryForm || surface || ''
-      ).trim();
+      const dictionaryForm = String(token?.dictionaryForm || surface || '').trim();
       if (surface === target || dictionaryForm === target) {
         if (dictionaryForm) candidates.add(dictionaryForm);
         if (surface) candidates.add(surface);
       }
     }
-
-    // Fallback for selected text that does not map cleanly to a token.
     candidates.add(target);
     return [...candidates];
   }
@@ -774,13 +804,29 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   }
 
   function isLearningCandidate(word) {
+    if (learningOwnership.source === 'jp-analyzer') {
+      return Boolean(selectedReaderContext?.knownLookupKey);
+    }
     return getSelectedLearningTokens(word).length > 0;
+  }
+
+  function getAnalyzerActionState() {
+    return getAnalyzerSelectionActionState(selectedReaderContext, {
+      isKnown: isKnownWord,
+      isManualKnown: isManualKnownWord
+    });
   }
 
   function handleMarkKnown(word) {
     const target = String(word || '').trim();
     if (!target) return;
-    const primary = getPrimaryKnownKey(target);
+    const primary = learningOwnership.source === 'jp-analyzer'
+      ? String(selectedReaderContext?.knownLookupKey || '').trim()
+      : getPrimaryKnownKey(target);
+    if (!primary) {
+      setStatus({ type: 'error', message: 'This analyzer span has no vocabulary known-word identity.' });
+      return;
+    }
     addManualKnownWord(primary);
     setSelectedText(primary);
     setCacheVersion(v => v + 1);
@@ -834,16 +880,16 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     if (!isText) { setMiningDebug({ status: 'blocked', stage: 'validation', selectedWord: selectedText, error: 'Navigate to text first.', updatedAt: new Date().toISOString() }); setStatus({ type: 'error', message: 'Navigate to text first.' }); return; }
     const novelSentence = currentData?.plainText || '';
     const analyzerCandidate = learningOwnership.source === 'jp-analyzer'
-      ? analyzerLearningModel?.miningCandidates?.find(candidate =>
-          candidate.start === analyzerMiningSelection?.spanStart && candidate.end === analyzerMiningSelection?.spanEnd)
+      ? selectedReaderContext
       : null;
-    if (learningOwnership.source === 'jp-analyzer' && !analyzerCandidate) {
-      setMiningDebug({ status: 'blocked', stage: 'eligibility', selectedWord: selectedText, error: 'Select within one analyzer-eligible span.', updatedAt: new Date().toISOString() });
-      setStatus({ type: 'error', message: 'Select one analyzer-eligible word or grammar span.' });
+    if (learningOwnership.source === 'jp-analyzer' && (!analyzerCandidate || analyzerCandidate.eligibleForMining !== true)) {
+      const message = selectionIssue || getAnalyzerActionState().miningMessage;
+      setMiningDebug({ status: 'blocked', stage: 'eligibility', selectedWord: selectedText, error: message, updatedAt: new Date().toISOString() });
+      setStatus({ type: 'error', message });
       return;
     }
     const miningLookupKey = analyzerCandidate ? getAnalyzerMiningLookupKey(analyzerCandidate) : selectedText;
-    setMiningDebug({ status: 'running', stage: 'start', startedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), selectedWord: selectedText, miningLookupKey, analyzerMiningSelection, learningSource: learningOwnership.source, noteType, scene: `${itemIndex + 1} / ${totalScenes}`, chapterTitle: currentData?.chapterTitle || '', novelSentence });
+    setMiningDebug({ status: 'running', stage: 'start', startedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), selectedWord: selectedText, miningLookupKey, analyzerMiningSelection: selectedReaderContext, learningSource: learningOwnership.source, noteType, scene: `${itemIndex + 1} / ${totalScenes}`, chapterTitle: currentData?.chapterTitle || '', novelSentence });
     setIsWorking(true); setEnrichResult(null); setStatus({ type: 'working', message: 'Connecting to Anki...' });
     try {
       updateMiningDebug({ status: 'running', stage: 'checkAnkiConnect' }); await checkAnkiConnect();
@@ -1206,16 +1252,23 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 {isWorking && <span className="mine-status">Working...</span>}
                 {enrichResult && !isWorking && <span className="mine-status" style={{ color: 'var(--success)' }}>✓ {enrichResult.source}</span>}
-                {selectedText && isManualKnownCandidate(selectedText) ? (
+                {learningOwnership.source === 'jp-analyzer' ? (() => {
+                  const action = getAnalyzerActionState();
+                  if (!selectedText) return <button className="secondary mark-known-btn" disabled>Mark as Known</button>;
+                  if (action.canUndoKnown) return <button className="secondary mark-known-btn" onClick={() => handleUndoKnown(selectedText)} disabled={isWorking}>Undo Known</button>;
+                  if (action.knownFromAnki) return <button className="secondary mark-known-btn known-from-anki-btn" disabled title="This analyzer lookup key is already known from Anki/cache.">Known from Anki</button>;
+                  if (action.canMarkKnown) return <button className="secondary mark-known-btn" onClick={() => handleMarkKnown(selectedText)} disabled={isWorking}>Mark as Known</button>;
+                  return <button className="secondary mark-known-btn non-learning-word-btn" disabled title={selectionIssue || action.knownMessage}>{action.knownMessage || 'Not vocabulary-known eligible'}</button>;
+                })() : selectedText && isManualKnownCandidate(selectedText) ? (
                   <button className="secondary mark-known-btn" onClick={() => handleUndoKnown(selectedText)} disabled={isWorking}>Undo Known</button>
                 ) : selectedText && isKnownCandidate(selectedText) ? (
                   <button className="secondary mark-known-btn known-from-anki-btn" disabled title="This word is already known from Anki/cache. It is not in manual-known storage.">Known from Anki</button>
                 ) : selectedText && !isLearningCandidate(selectedText) ? (
-                  <button className="secondary mark-known-btn non-learning-word-btn" disabled title="Particles, grammar, symbols, names, and numeric expressions are not manual-known candidates.">Not a learning word</button>
+                  <button className="secondary mark-known-btn non-learning-word-btn" disabled title="Legacy Kuromoji does not classify this selection as a learning word.">Not a learning word</button>
                 ) : (
                   <button className="secondary mark-known-btn" onClick={() => handleMarkKnown(selectedText)} disabled={!selectedText || isWorking}>Mark as Known</button>
                 )}
-                <button className="mine-btn" onClick={handleMine} disabled={!selectedText || isWorking}>⚡ Mine to Anki</button>
+                <button className="mine-btn" onClick={handleMine} disabled={!selectedText || isWorking || (learningOwnership.source === 'jp-analyzer' && (!selectedReaderContext || selectedReaderContext.eligibleForMining !== true))}>⚡ Mine to Anki</button>
               </div>
             </div>
           )}
