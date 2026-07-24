@@ -4,17 +4,12 @@ import { checkAnkiConnect, findLatestNote, updateNoteFields, ankiRequest } from 
 import { autoEnrichWordWithFallback, generateVoicevoxAudio } from '../lib/enrichService.js';
 import { buildCache, clearCache, getCacheSize, addKnownWord, addManualKnownWord, removeManualKnownWord, isManualKnownWord, isKnownWord } from '../lib/wordCache.js';
 import { getFrequency, startLoadingGlobalFrequency } from '../lib/frequencyMap.js';
-import DictionaryDebugPanel from './DictionaryDebugPanel.jsx';
-import JpAnalyzerIntegrationPanel from './JpAnalyzerIntegrationPanel.jsx';
 import {
   clearJpAnalyzerShadowCache,
   useJpAnalyzerShadow
 } from '../lib/useJpAnalyzerShadow.js';
-import { adaptCompactAnalysisToReaderWords } from '../lib/analyzerWordAdapter.js';
 import { adaptReaderSpansForRendering } from '../lib/analyzerReaderSpanAdapter.js';
-import { compareReaderWordModels } from '../lib/analyzerShadowComparison.js';
 import { findAdjacentTextScenes } from '../lib/scenePrefetch.js';
-import { getLegacyKuromojiSceneModel } from '../lib/legacyKuromojiSceneModel.js';
 import { resolveAnalyzerPresentationClass } from '../lib/analyzerPresentationPolicy.js';
 import { buildAnalyzerLearningModel, resolveLearningOwnership } from '../lib/analyzerLearningModel.js';
 import { createAnalyzerReaderContext, getAnalyzerMiningLookupKey, getAnalyzerSelectionActionState, resolveAnalyzerReaderContextForOffsets } from '../lib/analyzerMiningSelection.js';
@@ -406,7 +401,6 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   const [selectedText, setSelectedText] = useState('');
   const [selectedReaderContext, setSelectedReaderContext] = useState(null);
   const [selectionIssue, setSelectionIssue] = useState('');
-  const [legacySceneState,setLegacySceneState]=useState({status:'idle',model:null,error:null});
   const [noteType, setNoteType] = useState(() => saved.noteType || 'Kiku');
   const [fields, setFields] = useState(() => ({ ...DEFAULT_FIELDS, ...(saved.fields || {}) }));
 
@@ -459,25 +453,6 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
       prefetchTexts: adjacentTextScenes.ordered.map(target => target.text)
     }
   );
-  const jpAnalyzerLegacyAdapted = useMemo(() => {
-    if (
-      !isText ||
-      !currentData?.plainText ||
-      !jpAnalyzerShadow?.result
-    ) {
-      return { valid: false, errors: [], words: [], summary: null };
-    }
-
-    return adaptCompactAnalysisToReaderWords(
-      jpAnalyzerShadow.result,
-      currentData.plainText
-    );
-  }, [
-    isText,
-    currentData?.plainText,
-    jpAnalyzerShadow?.result
-  ]);
-
   const jpAnalyzerReader = useMemo(() => {
     if (
       !isText ||
@@ -504,25 +479,6 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     jpAnalyzerShadow?.result
   ]);
 
-  useEffect(() => { let cancelled=false; if(colorSource!==COLOR_SOURCES.LEGACY_KUROMOJI||!isText||!currentData?.plainText){setLegacySceneState({status:'idle',model:null,error:null});return()=>{cancelled=true;};} setLegacySceneState({status:'loading',model:null,error:null});getLegacyKuromojiSceneModel(currentData.plainText).then(model=>{if(!cancelled)setLegacySceneState({status:'ready',model,error:null});}).catch(error=>{if(!cancelled)setLegacySceneState({status:'error',model:null,error});});return()=>{cancelled=true;};},[colorSource,isText,currentData?.plainText]);
-  const legacySceneModel=legacySceneState.model;
-
-  const jpAnalyzerComparison = useMemo(() => {
-    if (!isText || !jpAnalyzerLegacyAdapted.valid) return null;
-
-    return compareReaderWordModels({
-      text: currentData?.plainText ?? '',
-      kuromojiWords:
-        legacySceneModel?.classifiedWords ?? legacySceneModel?.tokens ?? [],
-      analyzerWords: jpAnalyzerLegacyAdapted.words
-    });
-  }, [
-    isText,
-    currentData?.plainText,
-    legacySceneModel,
-    jpAnalyzerLegacyAdapted
-  ]);
-
   const jpAnalyzerPreviewAvailable =
     jpAnalyzerShadow?.status === 'ready' &&
     jpAnalyzerReader.valid === true &&
@@ -531,40 +487,13 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   const colourSourceResolution = resolveVisibleColourSource({
     requestedSource: colorSource,
     analyzerReady: jpAnalyzerPreviewAvailable,
-    analyzerWords: jpAnalyzerReader.words,
-    legacyWords:
-      legacySceneModel?.displayWords || legacySceneModel?.contentWords || []
+    analyzerWords: jpAnalyzerReader.words
   });
 
   const activeDisplayWords = colourSourceResolution.words;
   const activeColorSource = colourSourceResolution.activeSource;
   const analyzerNeutralFallback =
     colourSourceResolution.neutralFallback;
-
-  const legacyComprehension = useMemo(() => {
-    if (!isText) return null;
-    const words = legacySceneModel?.comprehensionWords || legacySceneModel?.contentWords || [];
-    if (words.length === 0) return null;
-    let known = 0;
-    for (const w of words) {
-      if (isTokenKnownForLearning(w)) known++;
-    }
-    return { known, total: words.length, percent: Math.round((known / words.length) * 100) };
-  }, [legacySceneModel, isText, cacheVersion]);
-
-  const legacyUnknownWords = useMemo(() => {
-    if (!isText) return [];
-    const sourceWords = legacySceneModel?.miningCandidates || legacySceneModel?.contentWords || [];
-    const seen = new Set();
-    const result = [];
-    for (const w of sourceWords) {
-      const form = w.dictionaryForm || w.surface;
-      if (!form || isTokenKnownForLearning(w) || seen.has(form)) continue;
-      seen.add(form);
-      result.push({ word: form, surface: w.surface, freq: getFrequency(form) });
-    }
-    return result;
-  }, [legacySceneModel, isText, cacheVersion, globalFreqReady]);
 
   const analyzerLearningModel = useMemo(() => {
     if (!isText || !jpAnalyzerReader.valid) return null;
@@ -579,43 +508,12 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   }, [isText, jpAnalyzerReader, cacheVersion, globalFreqReady]);
 
   const learningOwnership = useMemo(() => resolveLearningOwnership({
-    requestedSource: colorSource,
     analyzerValid: jpAnalyzerPreviewAvailable && Boolean(analyzerLearningModel),
-    analyzerModel: analyzerLearningModel,
-    legacyComprehension,
-    legacyNewWords: legacyUnknownWords
-  }), [
-    colorSource,
-    jpAnalyzerPreviewAvailable,
-    analyzerLearningModel,
-    legacyComprehension,
-    legacyUnknownWords
-  ]);
+    analyzerModel: analyzerLearningModel
+  }), [jpAnalyzerPreviewAvailable, analyzerLearningModel]);
 
   const comprehension = learningOwnership.comprehension;
   const unknownWords = learningOwnership.newWords;
-
-  const analyzerLearningShadow = useMemo(() => {
-    if (!isText || !jpAnalyzerReader.valid) return null;
-    return {
-      analyzer: analyzerLearningModel,
-      legacy: {
-        comprehension: legacyComprehension,
-        newWords: legacyUnknownWords,
-        miningCandidateCount: (legacySceneModel?.miningCandidates || legacySceneModel?.contentWords || []).length
-      },
-      activeSource: learningOwnership.source,
-      error: analyzerLearningModel ? null : 'Analyzer learning model is unavailable.'
-    };
-  }, [
-    isText,
-    jpAnalyzerReader,
-    analyzerLearningModel,
-    legacyComprehension,
-    legacyUnknownWords,
-    legacySceneModel,
-    learningOwnership.source
-  ]);
 
   const chapterStarts = useMemo(() => {
     const starts = new Map();
@@ -751,68 +649,14 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     setSelectedText(newWord.word);
   }
 
-  function getKnownKeyCandidates(word) {
-    if (learningOwnership.source === 'jp-analyzer') {
-      const key = String(selectedReaderContext?.knownLookupKey || '').trim();
-      return key ? [key] : [];
-    }
-    const target = String(word || '').trim();
-    if (!target) return [];
-    const candidates = new Set();
-    const tokenSources = [
-      ...(legacySceneModel?.miningCandidates || []),
-      ...(legacySceneModel?.displayWords || []),
-      ...(legacySceneModel?.contentWords || []),
-      ...(legacySceneModel?.classifiedWords || []),
-      ...(legacySceneModel?.tokens || [])
-    ];
-    for (const token of tokenSources) {
-      const surface = String(token?.surface || '').trim();
-      const dictionaryForm = String(token?.dictionaryForm || surface || '').trim();
-      if (surface === target || dictionaryForm === target) {
-        if (dictionaryForm) candidates.add(dictionaryForm);
-        if (surface) candidates.add(surface);
-      }
-    }
-    candidates.add(target);
-    return [...candidates];
+  function getKnownKeyCandidates() {
+    const key = String(selectedReaderContext?.knownLookupKey || '').trim();
+    return key ? [key] : [];
   }
 
-  function getPrimaryKnownKey(word) {
-    return getKnownKeyCandidates(word)[0] || String(word || '').trim();
-  }
-
-  function isManualKnownCandidate(word) {
-    return getKnownKeyCandidates(word).some(candidate => isManualKnownWord(candidate));
-  }
-
-  function isKnownCandidate(word) {
-    return getKnownKeyCandidates(word).some(candidate => isKnownWord(candidate));
-  }
-
-  function getSelectedLearningTokens(word) {
-    const target = String(word || '').trim();
-    if (!target) return [];
-    const tokenSources = [
-      ...(legacySceneModel?.classifiedWords || []),
-      ...(legacySceneModel?.displayWords || []),
-      ...(legacySceneModel?.miningCandidates || []),
-      ...(legacySceneModel?.tokens || [])
-    ];
-    return tokenSources.filter(token => {
-      const surface = String(token?.surface || '').trim();
-      const dictionaryForm = String(token?.dictionaryForm || surface || '').trim();
-      if (surface !== target && dictionaryForm !== target) return false;
-      return token?.tokenCategory === 'learning' || token?.countsForComprehension === true || token?.showInNewWords === true;
-    });
-  }
-
-  function isLearningCandidate(word) {
-    if (learningOwnership.source === 'jp-analyzer') {
-      return Boolean(selectedReaderContext?.knownLookupKey);
-    }
-    return getSelectedLearningTokens(word).length > 0;
-  }
+  function getPrimaryKnownKey(word) { return getKnownKeyCandidates()[0] || String(word || '').trim(); }
+  function isManualKnownCandidate() { return getKnownKeyCandidates().some(candidate => isManualKnownWord(candidate)); }
+  function isKnownCandidate() { return getKnownKeyCandidates().some(candidate => isKnownWord(candidate)); }
 
   function getAnalyzerActionState() {
     return getAnalyzerSelectionActionState(selectedReaderContext, {
@@ -913,7 +757,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
       else if (result.audioUrl) { try { updateMiningDebug({ status: 'running', stage: 'nadeshikoAudio' }); const filename = `nade_audio_${Date.now()}.mp3`; await ankiRequest('storeMediaFile', { filename, url: result.audioUrl }); fieldUpdates[fields.sentenceAudio] = `[sound:${filename}]`; updateMiningDebug({ sentenceAudio: `[sound:${filename}]` }); } catch (e) { updateMiningDebug({ audioError: e?.message || String(e) }); } }
       if (result.method !== 'voicevox' && result.imageUrl) { try { updateMiningDebug({ status: 'running', stage: 'nadeshikoImage' }); const filename = `nade_img_${Date.now()}.jpg`; await ankiRequest('storeMediaFile', { filename, url: result.imageUrl }); fieldUpdates[fields.picture] = `<img src="${filename}">`; updateMiningDebug({ picture: `<img src="${filename}">` }); } catch (e) { updateMiningDebug({ imageError: e?.message || String(e) }); } }
       updateMiningDebug({ status: 'running', stage: 'updateNoteFields', preparedFields: fieldUpdates }); await updateNoteFields(noteId, fieldUpdates);
-      if (learningOwnership.source === 'legacy-kuromoji' || analyzerCandidate?.knownLookupKey) addKnownWord(miningLookupKey); setCacheVersion(v => v + 1); try { await ankiRequest('guiBrowse', { query: `nid:${noteId}` }); } catch (e) {}
+      if (analyzerCandidate?.knownLookupKey) addKnownWord(miningLookupKey); setCacheVersion(v => v + 1); try { await ankiRequest('guiBrowse', { query: `nid:${noteId}` }); } catch (e) {}
       updateMiningDebug({ status: 'completed', stage: 'done', updatedNoteId: noteId, preparedFields: fieldUpdates }); setStatus({ type: 'ok', message: `Card updated — ${result.source}${result.mode ? ` (${result.mode})` : ''}` });
     } catch (err) { updateMiningDebug({ status: 'error', stage: 'failed', error: err?.message || String(err) }); setStatus({ type: 'error', message: err?.message || String(err) }); }
     setIsWorking(false);
@@ -1079,11 +923,10 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
                   )}
                 >
                   <option value={COLOR_SOURCES.JP_ANALYZER}>JP Analyzer</option>
-                  <option value={COLOR_SOURCES.LEGACY_KUROMOJI}>Legacy Kuromoji</option>
                   <option value={COLOR_SOURCES.PLAIN_TEXT}>Plain text</option>
                 </select>
                 <span style={{ fontSize: '10px' }}>
-                  JP Analyzer is the primary source. Legacy Kuromoji loads lazily only when explicitly selected. Invalid analyzer output is shown as neutral text.
+                  JP Analyzer is the sole linguistic source. Plain Text changes presentation only; invalid analyzer output remains neutral.
                 </span>
               </label>
               <label style={{ fontSize: '11px', color: 'var(--muted)', display: 'grid', gap: '4px' }}>Session Token: <input value={sessionToken} onChange={e => handleSaveSessionToken(e.target.value)} placeholder="Paste __Secure-nadeshiko.session_token" /><span style={{ fontSize: '10px' }}>F12 → Application → Cookies → nadeshiko.co</span></label>
@@ -1099,110 +942,24 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
           {debugMode && (
             <div className="debug-panel">
               <div className="debug-panel-title-row">
-                <div className="debug-panel-title">Debug Mode v6</div>
-                <button type="button" className="debug-export-btn" onClick={handleExportDebugReport}>Export full report</button>
+                <div className="debug-panel-title">Debug Report</div>
               </div>
-
-              <details open>
-                <summary>Current scene</summary>
-                <div className="debug-summary-grid">
-                  <div className="debug-mini-card"><span>Scene</span><strong>{itemIndex + 1} / {totalScenes}</strong></div>
-                  <div className="debug-mini-card"><span>Type</span><strong>{isImage ? 'image' : 'sentence'}</strong></div>
-                  <div className="debug-mini-card"><span>Chapter</span><strong>{currentData?.chapterTitle || '-'}</strong></div>
-                  <div className="debug-mini-card"><span>Selected</span><strong>{selectedText || '-'}</strong></div>
-                  <div className="debug-mini-card"><span>Comprehension</span><strong>{comprehension ? `${comprehension.percent}% (${comprehension.known}/${comprehension.total})` : 'n/a'}</strong></div>
-                  <div className="debug-mini-card"><span>Unknown</span><strong>{unknownWords.length}</strong></div>
-                </div>
-              </details>
-<details className="debug-nested" open>
-  <summary>Primary colour source — Phase 3C</summary>
-  <div className="debug-empty">
-    JP Analyzer and Plain Text modes use authoritative analyzer comprehension
-    and New Words. Legacy Kuromoji mode retains the legacy learning model.
-    Mining uses exact analyzer-owned span offsets in JP Analyzer and Plain Text modes.
-  </div>
-  <div className="debug-summary-grid">
-    <div className="debug-mini-card"><span>Requested source</span><strong>{colorSource}</strong></div>
-    <div className="debug-mini-card"><span>Preference origin</span><strong>{hasSavedColorSource ? 'saved' : 'default'}</strong></div>
-    <div className="debug-mini-card"><span>Active source</span><strong>{activeColorSource}</strong></div>
-    <div className="debug-mini-card"><span>Analyzer state</span><strong>{jpAnalyzerShadow?.status ?? 'idle'}</strong></div>
-    <div className="debug-mini-card"><span>Analyzer available</span><strong>{String(jpAnalyzerPreviewAvailable)}</strong></div>
-    <div className="debug-mini-card"><span>Neutral fallback</span><strong>{String(analyzerNeutralFallback)}</strong></div>
-    <div className="debug-mini-card"><span>Legacy model</span><strong>{legacySceneState.status}</strong></div>
-  </div>
-  {analyzerNeutralFallback && (
-    <div className="debug-empty">
-      JP Analyzer was selected, but readerSpans are unavailable or invalid. Neutral text is shown; Kuromoji was not selected automatically.
-    </div>
-  )}
-</details>
-
-<JpAnalyzerIntegrationPanel
-  currentData={currentData}
-  shadowState={jpAnalyzerShadow}
-  adaptedResult={jpAnalyzerReader}
-  comparison={jpAnalyzerComparison}
-  learningShadow={analyzerLearningShadow}
-  onClearShadowCache={
-    clearJpAnalyzerShadowCache
-  }
-/>
-
-<DictionaryDebugPanel
-  selectedText={selectedText}
-  currentData={currentData}
-/>
-              <details>
-                <summary>Token summary</summary>
-                <div className="debug-summary-grid">
-                  <div className="debug-mini-card"><span>Total tokens</span><strong>{debugTokenRows.length}</strong></div>
-                  <div className="debug-mini-card"><span>Learning</span><strong>{debugTokenSummary.learning}</strong></div>
-                  <div className="debug-mini-card"><span>Known learning</span><strong>{debugTokenSummary.knownLearning}</strong></div>
-                  <div className="debug-mini-card"><span>Unknown learning</span><strong>{debugTokenSummary.unknownLearning}</strong></div>
-                  <div className="debug-mini-card"><span>Grammar/other</span><strong>{debugTokenSummary.grammar}</strong></div>
-                  <div className="debug-mini-card"><span>Name/numeric</span><strong>{debugTokenSummary.names} / {debugTokenSummary.numeric}</strong></div>
-                </div>
-                {selectedDebugToken ? (
-                  <details className="debug-nested" open>
-                    <summary>selected token</summary>
-                    <div className="debug-kv-list">
-                      <div className="debug-kv"><span>surface</span><code>{selectedDebugToken.surface || '-'}</code></div>
-                      <div className="debug-kv"><span>dictionary</span><code>{selectedDebugToken.dictionaryForm || '-'}</code></div>
-                      <div className="debug-kv"><span>POS</span><code>{[selectedDebugToken.pos, selectedDebugToken.posDetail1, selectedDebugToken.posDetail2].filter(Boolean).join(' / ') || '-'}</code></div>
-                      <div className="debug-kv"><span>category</span><code>{selectedDebugToken.tokenCategory || '-'}</code></div>
-                      <div className="debug-kv"><span>known</span><code>{yesNo(selectedDebugToken.known)}</code></div>
-                      <div className="debug-kv"><span>manual</span><code>{yesNo(selectedDebugToken.manualKnown)}</code></div>
-                      <div className="debug-kv"><span>color</span><code>{selectedDebugToken.colorClass || '-'}</code></div>
-                      <div className="debug-kv"><span>frequency</span><code>{selectedDebugToken.frequency || '-'}</code></div>
-                    </div>
-                  </details>
-                ) : selectedText ? (<div className="debug-empty">Selected text was not mapped to a token. Use Export full report for raw token rows.</div>) : (<div className="debug-empty">Select a word to inspect token details.</div>)}
-              </details>
-
-              <details>
-                <summary>Parser / image summary</summary>
-                <div className="debug-kv-list">{parserSummaryRows.map(([label, value]) => (<div className="debug-kv" key={label}><span>{label}</span><code>{value || '-'}</code></div>))}</div>
-              </details>
-
-              <details>
-                <summary>Mining summary</summary>
-                {!miningDebug ? (<div className="debug-empty">No mining attempt recorded yet.</div>) : (<div className="debug-kv-list">{miningSummaryRows.map(([label, value]) => (<div className="debug-kv" key={label}><span>{label}</span><code>{value || '-'}</code></div>))}</div>)}
-              </details>
-
-              <details>
-                <summary>Nearby scenes ({debugNearbyRows.length})</summary>
-                <div className="debug-neighbor-list">
-                  {debugNearbyRows.map(row => (<div className={`debug-neighbor-row ${row.relative === 'current' ? 'current' : ''}`} key={row.index}><div><strong>{row.relative}</strong><span>Scene {row.index + 1}</span><span>{row.type}</span></div><code>{row.preview || '-'}</code></div>))}
-                </div>
-              </details>
-
-              <details>
-                <summary>Raw details are in export</summary>
-                <div className="debug-empty">Use Export full report for full token rows, parser rows, text/html, mining fields, dictionary diagnostics, and raw debug data.</div>
-              </details>
+              <div className="debug-summary-grid">
+                <div className="debug-mini-card"><span>Analyzer</span><strong>{jpAnalyzerShadow?.status ?? 'idle'}</strong></div>
+                <div className="debug-mini-card"><span>Reader contract</span><strong>{jpAnalyzerReader.valid ? 'valid' : 'invalid'}</strong></div>
+                <div className="debug-mini-card"><span>Result source</span><strong>{jpAnalyzerShadow?.source ?? '-'}</strong></div>
+                <div className="debug-mini-card"><span>Scene</span><strong>{itemIndex + 1} / {totalScenes}</strong></div>
+              </div>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
+                <button type="button" className="debug-export-btn" onClick={handleExportDebugReport}>Export Debug Report</button>
+                <button type="button" className="secondary" onClick={() => navigator.clipboard?.writeText(`scene=${itemIndex + 1}; analyzer=${jpAnalyzerShadow?.status ?? 'idle'}; contract=${jpAnalyzerReader.valid ? 'valid' : 'invalid'}; source=${jpAnalyzerShadow?.source ?? '-'}`)}>Copy Diagnostic Summary</button>
+                <button type="button" className="secondary" onClick={clearJpAnalyzerShadowCache}>Clear Analyzer Cache</button>
+              </div>
             </div>
           )}
         </aside>
+
+
 
         <div className="reader-area">
           <div className="nav-header">
@@ -1257,23 +1014,15 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 {isWorking && <span className="mine-status">Working...</span>}
                 {enrichResult && !isWorking && <span className="mine-status" style={{ color: 'var(--success)' }}>✓ {enrichResult.source}</span>}
-                {learningOwnership.source === 'jp-analyzer' ? (() => {
+                {(() => {
                   const action = getAnalyzerActionState();
                   if (!selectedText) return <button className="secondary mark-known-btn" disabled>Mark as Known</button>;
                   if (action.canUndoKnown) return <button className="secondary mark-known-btn" onClick={() => handleUndoKnown(selectedText)} disabled={isWorking}>Undo Known</button>;
                   if (action.knownFromAnki) return <button className="secondary mark-known-btn known-from-anki-btn" disabled title="This analyzer lookup key is already known from Anki/cache.">Known from Anki</button>;
                   if (action.canMarkKnown) return <button className="secondary mark-known-btn" onClick={() => handleMarkKnown(selectedText)} disabled={isWorking}>Mark as Known</button>;
                   return <button className="secondary mark-known-btn non-learning-word-btn" disabled title={selectionIssue || action.knownMessage}>{action.knownMessage || 'Not vocabulary-known eligible'}</button>;
-                })() : selectedText && isManualKnownCandidate(selectedText) ? (
-                  <button className="secondary mark-known-btn" onClick={() => handleUndoKnown(selectedText)} disabled={isWorking}>Undo Known</button>
-                ) : selectedText && isKnownCandidate(selectedText) ? (
-                  <button className="secondary mark-known-btn known-from-anki-btn" disabled title="This word is already known from Anki/cache. It is not in manual-known storage.">Known from Anki</button>
-                ) : selectedText && !isLearningCandidate(selectedText) ? (
-                  <button className="secondary mark-known-btn non-learning-word-btn" disabled title="Legacy Kuromoji does not classify this selection as a learning word.">Not a learning word</button>
-                ) : (
-                  <button className="secondary mark-known-btn" onClick={() => handleMarkKnown(selectedText)} disabled={!selectedText || isWorking}>Mark as Known</button>
-                )}
-                <button className="mine-btn" onClick={handleMine} disabled={!selectedText || isWorking || (learningOwnership.source === 'jp-analyzer' && (!selectedReaderContext || selectedReaderContext.eligibleForMining !== true))}>⚡ Mine to Anki</button>
+                })()}
+                <button className="mine-btn" onClick={handleMine} disabled={!selectedText || isWorking || (!selectedReaderContext || selectedReaderContext.eligibleForMining !== true)}>⚡ Mine to Anki</button>
               </div>
             </div>
           )}

@@ -62,41 +62,8 @@ function copySpan(span, extra = {}) {
 }
 
 
-/** Phase 5.2A: choose the production learning model without a hidden fallback. */
-export function resolveLearningOwnership({
-  requestedSource,
-  analyzerValid,
-  analyzerModel,
-  legacyComprehension,
-  legacyNewWords
-}) {
-  if (requestedSource === 'legacy-kuromoji') {
-    return {
-      source: 'legacy-kuromoji',
-      available: true,
-      comprehension: legacyComprehension,
-      newWords: Array.isArray(legacyNewWords) ? legacyNewWords : []
-    };
-  }
-
-  if (!analyzerValid || !analyzerModel?.available) {
-    return {
-      source: 'jp-analyzer',
-      available: false,
-      comprehension: null,
-      newWords: []
-    };
-  }
-
-  return {
-    source: 'jp-analyzer',
-    available: true,
-    comprehension: analyzerModel.comprehension,
-    newWords: analyzerModel.newWords.map(span => ({
-      word: span.key,
-      surface: span.surface,
-      freq: span.frequency,
-      analyzerSpan: span
-    }))
-  };
+/** JP Analyzer is the sole production learning model. */
+export function resolveLearningOwnership({ analyzerValid, analyzerModel }) {
+  if (!analyzerValid || !analyzerModel?.available) return { source: 'jp-analyzer', available: false, comprehension: null, newWords: [] };
+  return { source: 'jp-analyzer', available: true, comprehension: analyzerModel.comprehension, newWords: analyzerModel.newWords.map(span => ({ word: span.key, surface: span.surface, freq: span.frequency, analyzerSpan: span })) };
 }

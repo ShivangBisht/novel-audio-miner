@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const root=new URL('../',import.meta.url);
+const absent=['src/lib/tokenizer.js','src/lib/wordModel.js','src/lib/legacyKuromojiSceneModel.js','src/lib/analyzerShadowComparison.js','src/lib/analyzerWordAdapter.js'];
+for(const rel of absent) assert.equal(fs.existsSync(new URL(rel,root)),false,rel);
+const pkg=JSON.parse(fs.readFileSync(new URL('package.json',root),'utf8'));
+assert.equal('kuromoji' in pkg.dependencies,false);
+const reader=fs.readFileSync(new URL('src/components/Reader.jsx',root),'utf8');
+for(const marker of ['LEGACY_KUROMOJI','getLegacyKuromojiSceneModel','isLearningCandidate','getSelectedLearningTokens','DictionaryDebugPanel','JpAnalyzerIntegrationPanel']) assert.equal(reader.includes(marker),false,marker);
+assert.equal(reader.includes('Export Debug Report'),true);
+assert.equal(reader.includes('Copy Diagnostic Summary'),true);
+assert.equal(reader.includes('Clear Analyzer Cache'),true);
+const parser=fs.readFileSync(new URL('src/lib/epubParser.js',root),'utf8');
+for(const marker of ['loadTokenizer','tokenizeText','classifiedWords','displayWords']) assert.equal(parser.includes(marker),false,marker);
+console.log('tokenizer retirement and compact debug report tests passed');
