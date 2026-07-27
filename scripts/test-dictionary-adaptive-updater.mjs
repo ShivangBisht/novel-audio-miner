@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {checkDictionaryUpdate,compareDictionaryRevision,evaluateUpdateAvailability} from '../src/lib/dictionaryUpdateCheck.js';
+assert.equal(compareDictionaryRevision('JMdict.2025-11-01','JMdict.2026-07-24'),-1);
+const dictionary={dictionaryId:'j',stableIdentity:'jmdict',displayTitle:'JMdict',revision:'JMdict.2025-11-01',updateManifestUrl:'https://example.invalid/j.json'};
+let calls=0;
+const fetchImpl=async url=>{calls+=1;if(url.startsWith('https://'))throw new TypeError('NetworkError');return{ok:true,json:async()=>({metadata:{title:'JMdict',revision:'JMdict.2026-07-24',downloadUrl:'https://example.invalid/j.zip'}})}};
+const result=await checkDictionaryUpdate(dictionary,{fetchImpl});
+assert.equal(result.route,'analyzer');assert.equal(result.status,'update-available');assert.equal(calls,2);
+assert.equal(evaluateUpdateAvailability(dictionary,{stableIdentity:'other'}).status,'identity-mismatch');
+console.log('adaptive dictionary updater tests passed');

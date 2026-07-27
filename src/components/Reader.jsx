@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
+import DictionaryManagementPanel from './DictionaryManagementPanel.jsx';
 import { getProgress, saveProgress } from '../lib/storage.js';
 import { checkAnkiConnect, findLatestNote, updateNoteFields, ankiRequest } from '../lib/ankiConnect.js';
 import { autoEnrichWordWithFallback, generateVoicevoxAudio } from '../lib/enrichService.js';
@@ -905,6 +906,10 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
               <input type="range" min="420" max="900" step="20" value={readerStyle.height} onChange={e => updateStyle({ height: Number(e.target.value) })} />
               <button className="secondary" onClick={resetStyle} style={{ marginTop: '8px', width: '100%', fontSize: '11px' }}>Reset to default</button>
             </div>
+          </details>
+          <details className="dictionary-settings">
+            <summary>Settings · Dictionary Management</summary>
+            <DictionaryManagementPanel />
           </details>
           <details className="advanced-settings">
             <summary>Advanced</summary>

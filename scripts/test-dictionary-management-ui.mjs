@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const reader = fs.readFileSync(new URL('../src/components/Reader.jsx', import.meta.url), 'utf8');
+const panel = fs.readFileSync(new URL('../src/components/DictionaryManagementPanel.jsx', import.meta.url), 'utf8');
+const css = fs.readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8');
+assert.match(reader, /DictionaryManagementPanel/);
+assert.match(reader, /Settings · Dictionary Management/);
+for (const text of ['Add / replace ZIP', 'Check all updates', 'Replace ZIP', 'Remove']) assert.match(panel, new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+assert.match(panel, /importDictionaryFile/);
+assert.match(panel, /downloadDictionaryUpdate/);
+assert.match(panel, /removeInstalledDictionary/);
+assert.match(css, /\.dictionary-manager/);
+console.log('dictionary management UI integration tests passed');
