@@ -19,3 +19,23 @@ Completed on 2026-07-27.
 
 Final runtime evidence: `D:\Mining\_DELETE_AFTER_20260726\phase7\audits\PHASE7_FINAL_RUNTIME_REPORT.md`.
 <!-- PHASE7_FINAL_END -->
+
+<!-- PHASE7_CLOSEOUT_BEGIN -->
+### Phase 7 closeout status
+
+- Finalized: **2026-07-27**.
+- JP Analyzer commit at closeout: `0d12d51`.
+- Novel Audio Miner commit at closeout: `08dc3bc`.
+- Authoritative database: `D:\Mining\JP analyzer\data\phase8_analysis_lexicon.sqlite3`.
+- Installed dictionaries: **24**.
+- Live entries: **4,241,269**.
+- Registry entries: **4,241,269**.
+- Registry consistency: **true**.
+- SQLite integrity: **ok**.
+- Configured online update sources: **5**.
+- Staged entries: **0**.
+- Active dictionary operations: **0**.
+- Five real dictionaries were updated successfully through the integrated Settings workflow.
+- Dictionaries without a verified online source remain supported through atomic local ZIP replacement.
+- Remaining network-dependent source checks are documented for home-network verification.
+<!-- PHASE7_CLOSEOUT_END -->
