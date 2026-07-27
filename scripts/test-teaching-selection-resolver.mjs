@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { resolveTeachingSelectionFromOffsets, teachingSelectionMessage } from '../src/lib/teachingSelectionResolver.js';
+const sentence='少年が走ってきた。';
+const spans=[{start:0,end:2,surface:'少年'},{start:2,end:3,surface:'が'},{start:3,end:5,surface:'走っ'},{start:5,end:8,surface:'てきた'},{start:8,end:9,surface:'。'}];
+const exact=resolveTeachingSelectionFromOffsets({sentence,analyzerSpans:spans,start:3,end:8,visibleText:'走ってきた'});
+assert.equal(exact.valid,true); assert.deepEqual(exact.coveredSpanIndexes,[2,3]);
+const source=fs.readFileSync(new URL('../src/lib/teachingSelectionResolver.js',import.meta.url),'utf8');
+assert.match(source,/locateSourceWindow/);
+assert.match(source,/const prefix = renderedText\.slice\(0, first\)/);
+assert.match(source,/prefix\.trim\(\) \|\| suffix\.trim\(\)/);
+assert.match(source,/renderedOffset - sourceWindow\.start/);
+assert.doesNotMatch(source,/spanStart \+ local/);
+assert.match(teachingSelectionMessage({valid:false,reason:'selection-outside-source-window'}),/layout text/);
+console.log('teaching selection resolver source-alignment tests passed');

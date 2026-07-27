@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import DictionaryManagementPanel from './DictionaryManagementPanel.jsx';
+import TeachingPanel from './TeachingPanel.jsx';
+import { resolveTeachingSelection, teachingSelectionMessage } from '../lib/teachingSelectionResolver.js';
 import { getProgress, saveProgress } from '../lib/storage.js';
 import { checkAnkiConnect, findLatestNote, updateNoteFields, ankiRequest } from '../lib/ankiConnect.js';
 import { autoEnrichWordWithFallback, generateVoicevoxAudio } from '../lib/enrichService.js';
@@ -356,6 +358,8 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   const [unblurredImages, setUnblurredImages] = useState(new Set());
   const [goInput, setGoInput] = useState('');
   const [status, setStatus] = useState({ type: '', message: '' });
+  const [teachingMode, setTeachingMode] = useState(false);
+  const [teachingSelection, setTeachingSelection] = useState(null);
   const [enrichResult, setEnrichResult] = useState(null);
   const [isWorking, setIsWorking] = useState(false);
 
@@ -507,6 +511,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     setSelectedText('');
     setSelectedReaderContext(null);
     setSelectionIssue('');
+    setTeachingSelection(null);
   }, [itemIndex]);
 
   async function checkAnkiStatus() {
@@ -526,6 +531,17 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     setTimeout(() => {
       const rawSelectedText = getSelectedWord();
       if (!rawSelectedText) return;
+      if (teachingMode) {
+        const result = resolveTeachingSelection({
+          root: sentenceBoxRef.current,
+          selection: window.getSelection(),
+          sentence: currentData?.plainText || '',
+          analyzerSpans: jpAnalyzerReader.words,
+        });
+        setTeachingSelection(result.valid ? result : null);
+        setStatus({ type: result.valid ? 'ok' : 'error', message: teachingSelectionMessage(result) });
+        if (!result.valid) return;
+      }
       setSelectedText(rawSelectedText);
       setSelectedReaderContext(null);
       setSelectionIssue('');
@@ -786,7 +802,6 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
 
   const boxStyle = {
     fontSize: `${readerStyle.fontSize}px`, lineHeight: readerStyle.lineHeight,
-    height: verticalMode ? `${readerStyle.height}px` : undefined,
     fontFamily: FONT_STACKS[readerStyle.fontFamily] || FONT_STACKS.mincho
   };
   if (!totalScenes) return <section className="reader-card"><h2>{cleanedTitle}</h2><p>No content found.</p></section>;
@@ -895,6 +910,9 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
             <button className="secondary" onClick={() => setShowFurigana(v => !v)} style={{ flex: 1, fontSize: '12px' }}>Furigana: {showFurigana ? 'ON' : 'OFF'}</button>
             <button className="secondary" onClick={() => setVerticalMode(v => !v)} style={{ flex: 1, fontSize: '12px' }}>{verticalMode ? 'Vertical' : 'Horizontal'}</button>
           </div>
+          <button className="secondary teaching-toggle" onClick={() => { setTeachingMode(v => !v); setTeachingSelection(null); }} style={{ fontSize: '11px', background: teachingMode ? 'var(--accent)' : undefined }}>
+            Teaching Mode: {teachingMode ? 'ON' : 'OFF'}
+          </button>
           <details open={showStyle} onToggle={e => setShowStyle(e.target.open)}>
             <summary style={{ fontSize: '12px', color: 'var(--muted)', cursor: 'pointer' }}>Reader style</summary>
             <div className="style-panel">
@@ -984,18 +1002,29 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
           {isText && currentData && (
             <>
               <div ref={sentenceBoxRef}
-                className={`sentence-box ${verticalMode ? 'vertical' : ''} ${hasDialogueColumns ? 'dialogue-columns' : ''}`}
+                className="sentence-box"
                 lang="ja" style={boxStyle}
                 onMouseUp={handleTextSelection} onDoubleClick={handleTextSelection} onTouchEnd={handleTextSelection}>
-                {renderStableSentence({
-                  htmlText: currentData.htmlText,
-                  plainText: currentData.plainText,
-                  tokens: activeDisplayWords,
-                  showFurigana,
-                  verticalMode
-                })}
+                <div className={`sentence-content ${verticalMode ? 'vertical' : ''} ${hasDialogueColumns ? 'dialogue-columns' : ''}`}>
+                  {renderStableSentence({
+                    htmlText: currentData.htmlText,
+                    plainText: currentData.plainText,
+                    tokens: activeDisplayWords,
+                    showFurigana,
+                    verticalMode
+                  })}
+                </div>
               </div>
               {status.message && <div className={`status-message ${status.type}`} style={{ marginTop: '8px' }}>{status.message}</div>}
+              {teachingMode && teachingSelection?.valid && (
+                <div className="teaching-drawer-layer">
+                  <TeachingPanel
+                    selection={teachingSelection}
+                    analysis={{ words: jpAnalyzerReader.words, candidates: jpAnalyzerShadow?.result?.readerCandidates || [], selection: jpAnalyzerShadow?.result?.readerSelection || {} }}
+                    onClose={() => setTeachingSelection(null)}
+                  />
+                </div>
+              )}
             </>
           )}
 
