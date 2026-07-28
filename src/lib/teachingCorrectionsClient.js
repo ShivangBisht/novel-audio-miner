@@ -17,3 +17,10 @@ export function listScopedReaderCorrections({ sentence, start, end, includeInact
   if (Number.isInteger(end)) params.set('end', String(end));
   return request(`/reader-corrections/scope?${params}`, { signal: options.signal }, options.baseUrl);
 }
+
+export function saveReaderCorrection(payload, options = {}) {
+  return request('/reader-corrections', { method: 'POST', body: JSON.stringify(payload), signal: options.signal }, options.baseUrl);
+}
+export function deactivateReaderCorrection(correctionId, options = {}) {
+  return request(`/reader-corrections/${encodeURIComponent(correctionId)}`, { method: 'DELETE', signal: options.signal }, options.baseUrl);
+}

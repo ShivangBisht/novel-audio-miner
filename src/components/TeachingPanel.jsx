@@ -1,60 +1,30 @@
 import { useEffect, useMemo, useState } from 'react';
-import { previewReaderCorrection, listScopedReaderCorrections } from '../lib/teachingCorrectionsClient.js';
-
-const ACTIONS = [
-  ['show-as-one-unit', 'Show as one unit', null],
-  ['split', 'Split', null],
-  ['mark-vocabulary', 'Vocabulary', 'lexical'],
-  ['mark-grammar', 'Grammar', 'learnable-grammar'],
-  ['mark-function', 'Function', 'function'],
-  ['mark-name', 'Name', 'name'],
-  ['mark-unresolved', 'Leave uncoloured', 'unresolved'],
-];
-function partition(spans) { return (spans || []).map(item => item.surface).join(' | '); }
-export default function TeachingPanel({ selection, analysis, onClose }) {
-  const [action, setAction] = useState('show-as-one-unit');
-  const [splitOffsets, setSplitOffsets] = useState([]);
-  const [preview, setPreview] = useState(null);
-  const [scope, setScope] = useState(null);
-  const [status, setStatus] = useState({ type: '', text: '' });
-  const [busy, setBusy] = useState(false);
-  const current = ACTIONS.find(item => item[0] === action) || ACTIONS[0];
-  const internalOffsets = useMemo(() => {
-    if (!selection?.valid) return [];
-    const values = [];
-    for (let value = selection.start + 1; value < selection.end; value += 1) values.push(value);
-    return values;
-  }, [selection]);
-  useEffect(() => {
-    setPreview(null); setSplitOffsets([]); setAction('show-as-one-unit');
-    if (!selection?.valid) return;
-    listScopedReaderCorrections(selection).then(setScope).catch(() => setScope(null));
-  }, [selection?.sentence, selection?.start, selection?.end]);
-  async function runPreview() {
-    if (!selection?.valid) return;
-    setBusy(true); setStatus({ type: 'working', text: 'Requesting authoritative preview...' });
-    try {
-      const payload = {
-        sentence: selection.sentence, start: selection.start, end: selection.end,
-        surface: selection.surface, action, displayRole: current[2], splitOffsets,
-        scope: 'occurrence', baselineReaderSpans: analysis.words,
-        readerCandidates: analysis.candidates || [], readerSelection: analysis.selection || {},
-      };
-      const result = await previewReaderCorrection(payload);
-      setPreview(result); setStatus({ type: 'ok', text: 'Preview validated. Nothing has been saved.' });
-    } catch (error) { setPreview(null); setStatus({ type: 'error', text: error.message }); }
-    finally { setBusy(false); }
-  }
-  if (!selection?.valid) return null;
-  return <section className="teaching-panel" data-testid="teaching-panel">
-    <div className="teaching-panel-header"><div><strong>Teaching Mode</strong><span>Exact occurrence preview · no changes saved</span></div><button type="button" className="secondary" onClick={onClose}>Close</button></div>
-    <div className="teaching-selection-summary"><strong>{selection.surface}</strong><span>Offsets {selection.start}–{selection.end} · spans {selection.coveredSpanIndexes.join(', ')}</span></div>
-    <div className="teaching-partition"><span>Current partition</span><code>{partition(analysis.words)}</code></div>
-    <div className="teaching-actions">{ACTIONS.map(([value,label]) => <button type="button" key={value} className={action===value?'teaching-action active':'teaching-action'} onClick={()=>{setAction(value);setPreview(null);}}>{label}</button>)}</div>
-    {action === 'split' && <div className="teaching-split"><span>Split after character:</span><div>{internalOffsets.map(offset => <label key={offset}><input type="checkbox" checked={splitOffsets.includes(offset)} onChange={event => setSplitOffsets(values => event.target.checked ? [...values,offset].sort((a,b)=>a-b) : values.filter(value=>value!==offset))}/>{selection.sentence.slice(selection.start, offset)} | {selection.sentence.slice(offset, selection.end)}</label>)}</div></div>}
-    <button type="button" disabled={busy || (action==='split' && splitOffsets.length===0)} onClick={runPreview}>Preview</button>
-    {status.text && <div className={`status-message ${status.type}`}>{status.text}</div>}
-    {preview && <div className="teaching-preview"><div><span>Before</span><code>{partition(preview.originalReaderSpans)}</code></div><div><span>After</span><code>{partition(preview.previewReaderSpans)}</code></div><div className="teaching-preview-meta"><span>Role: {preview.derivedCorrection.displayRole}</span><span>Scope: {preview.derivedCorrection.scope}</span><span>Saved: no</span></div></div>}
-    {scope?.corrections?.length > 0 && <div className="teaching-existing">Existing corrections in range: {scope.corrections.length}</div>}
-  </section>;
+import { previewReaderCorrection, saveReaderCorrection, deactivateReaderCorrection, listScopedReaderCorrections } from '../lib/teachingCorrectionsClient.js';
+const ACTIONS=[['show-as-one-unit','Show as one unit',null],['split','Split',null],['mark-vocabulary','Vocabulary','lexical'],['mark-grammar','Grammar','learnable-grammar'],['mark-function','Function','function'],['mark-name','Name','name'],['mark-unresolved','Leave uncoloured','unresolved']];
+const partition=spans=>(spans||[]).map(item=>item.surface).join(' | ');
+const signature=value=>JSON.stringify(value);
+export default function TeachingPanel({ selection, analysis, onClose, onCorrectionMutation }) {
+ const [action,setAction]=useState('show-as-one-unit'),[splitOffsets,setSplitOffsets]=useState([]),[preview,setPreview]=useState(null),[previewPayload,setPreviewPayload]=useState(null),[scope,setScope]=useState(null),[status,setStatus]=useState({type:'',text:''}),[busy,setBusy]=useState(false),[saved,setSaved]=useState(null);
+ const current=ACTIONS.find(item=>item[0]===action)||ACTIONS[0];
+ const internalOffsets=useMemo(()=>{const values=[];if(selection?.valid)for(let value=selection.start+1;value<selection.end;value+=1)values.push(value);return values;},[selection]);
+ const payload=useMemo(()=>selection?.valid?{sentence:selection.sentence,start:selection.start,end:selection.end,surface:selection.surface,action,displayRole:current[2],splitOffsets,scope:'occurrence',baselineReaderSpans:analysis.words,readerCandidates:analysis.candidates||[],readerSelection:analysis.selection||{}}:null,[selection,action,current,splitOffsets,analysis]);
+ const previewCurrent=preview&&previewPayload&&signature(payload)===signature(previewPayload);
+ async function refreshScope(){if(!selection?.valid)return;try{setScope(await listScopedReaderCorrections(selection));}catch{setScope(null);}}
+ useEffect(()=>{setPreview(null);setPreviewPayload(null);setSaved(null);setSplitOffsets([]);setAction('show-as-one-unit');refreshScope();},[selection?.sentence,selection?.start,selection?.end]);
+ async function runPreview(){setBusy(true);setStatus({type:'working',text:'Requesting authoritative preview...'});try{const result=await previewReaderCorrection(payload);setPreview(result);setPreviewPayload(payload);setSaved(null);setStatus({type:'ok',text:'Preview validated. Nothing has been saved.'});}catch(error){setPreview(null);setPreviewPayload(null);setStatus({type:'error',text:error.message});}finally{setBusy(false);}}
+ async function saveCorrection(){if(!previewCurrent)return;if(!window.confirm(`Save this exact-occurrence correction?\n\n${partition(preview.originalReaderSpans)}\n→ ${partition(preview.previewReaderSpans)}`))return;setBusy(true);setStatus({type:'working',text:'Saving correction...'});try{const result=await saveReaderCorrection(previewPayload);if(!result.saved||!result.correctionId)throw new Error('Backend did not confirm correction persistence.');setSaved(result);setStatus({type:'ok',text:'Correction saved. Refreshing analyzer result...'});await onCorrectionMutation?.(result);await refreshScope();setStatus({type:'ok',text:'Correction saved and reader refresh requested.'});}catch(error){setStatus({type:'error',text:error.message});}finally{setBusy(false);}}
+ async function undoCorrection(record){if(!window.confirm(`Undo correction ${record.correction_id}?`))return;setBusy(true);setStatus({type:'working',text:'Undoing correction...'});try{const result=await deactivateReaderCorrection(record.correction_id);await onCorrectionMutation?.(result);setSaved(null);setPreview(null);setPreviewPayload(null);await refreshScope();setStatus({type:'ok',text:'Correction undone and reader refresh requested.'});}catch(error){setStatus({type:'error',text:error.message});}finally{setBusy(false);}}
+ if(!selection?.valid)return null;
+ return <section className="teaching-panel" data-testid="teaching-panel">
+  <div className="teaching-panel-header"><div><strong>Teaching Mode</strong><span>Exact occurrence · Preview before Save</span></div><button type="button" className="secondary" onClick={onClose}>Close</button></div>
+  <div className="teaching-selection-summary"><strong>{selection.surface}</strong><span>Offsets {selection.start}–{selection.end} · spans {selection.coveredSpanIndexes.join(', ')}</span></div>
+  <div className="teaching-partition"><span>Current partition</span><code>{partition(analysis.words)}</code></div>
+  <div className="teaching-actions">{ACTIONS.map(([value,label])=><button type="button" key={value} className={action===value?'teaching-action active':'teaching-action'} onClick={()=>{setAction(value);setPreview(null);setPreviewPayload(null);setSaved(null);}}>{label}</button>)}</div>
+  {action==='split'&&<div className="teaching-split"><span>Split after character:</span><div>{internalOffsets.map(offset=><label key={offset}><input type="checkbox" checked={splitOffsets.includes(offset)} onChange={event=>{setPreview(null);setPreviewPayload(null);setSplitOffsets(values=>event.target.checked?[...values,offset].sort((a,b)=>a-b):values.filter(value=>value!==offset));}}/>{selection.sentence.slice(selection.start,offset)} | {selection.sentence.slice(offset,selection.end)}</label>)}</div></div>}
+  <div className="teaching-commit-actions"><button type="button" disabled={busy||(action==='split'&&!splitOffsets.length)} onClick={runPreview}>Preview</button><button type="button" className="teaching-save" disabled={busy||!previewCurrent||Boolean(saved)} onClick={saveCorrection}>Save correction</button></div>
+  {status.text&&<div className={`status-message ${status.type}`}>{status.text}</div>}
+  {preview&&<div className="teaching-preview"><div><span>Before</span><code>{partition(preview.originalReaderSpans)}</code></div><div><span>After</span><code>{partition(preview.previewReaderSpans)}</code></div><div className="teaching-preview-meta"><span>Role: {preview.derivedCorrection.displayRole}</span><span>Scope: {preview.derivedCorrection.scope}</span><span>Saved: {saved?'yes':'no'}</span></div></div>}
+  {saved&&<div className="teaching-saved"><strong>Correction saved</strong><span>ID: {saved.correctionId}</span><span>Revision: {saved.correctionRevisionAfter}</span></div>}
+  {scope?.corrections?.length>0&&<div className="teaching-existing"><strong>Active corrections in range</strong>{scope.corrections.map(record=><div key={record.correction_id}><span>{record.action} · {record.surface}</span><button type="button" className="danger-button" disabled={busy} onClick={()=>undoCorrection(record)}>Undo</button></div>)}</div>}
+ </section>;
 }

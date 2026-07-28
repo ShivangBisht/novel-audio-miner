@@ -175,7 +175,7 @@ export function clearJpAnalyzerShadowCache() {
 
 export function getJpAnalyzerShadowCacheSize() { return memoryCache.size; }
 
-export function useJpAnalyzerShadow(text, { enabled = true, prefetchTexts = [] } = {}) {
+export function useJpAnalyzerShadow(text, { enabled = true, prefetchTexts = [], refreshKey = 0 } = {}) {
   const sourceText = String(text ?? '');
   const generation = useRef(0);
   const [state, setState] = useState(initial);
@@ -298,7 +298,7 @@ export function useJpAnalyzerShadow(text, { enabled = true, prefetchTexts = [] }
 
     run();
     return () => { disposed = true; };
-  }, [sourceText, enabled, prefetchSignature]);
+  }, [sourceText, enabled, prefetchSignature, refreshKey]);
 
   return state;
 }

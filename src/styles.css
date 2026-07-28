@@ -415,3 +415,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   .teaching-drawer-layer .teaching-panel { max-height: 52vh; }
 }
 /* PHASE8_3G_VERTICAL_LAYOUT_ISOLATION_END */
+
+/* Phase 8.4 correction lifecycle */
+.teaching-commit-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.teaching-save { background:var(--success); color:#061108; }
+.teaching-saved { display:grid; gap:3px; padding:8px; border:1px solid rgba(63,185,80,.4); border-radius:8px; background:rgba(63,185,80,.08); font-size:10px; }
+.teaching-existing { display:grid; gap:6px; }
+.teaching-existing > div { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.teaching-existing button { font-size:10px; padding:4px 8px; }

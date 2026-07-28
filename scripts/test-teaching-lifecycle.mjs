@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';
+const reader=fs.readFileSync(new URL('../src/components/Reader.jsx',import.meta.url),'utf8');
+const panel=fs.readFileSync(new URL('../src/components/TeachingPanel.jsx',import.meta.url),'utf8');
+const client=fs.readFileSync(new URL('../src/lib/teachingCorrectionsClient.js',import.meta.url),'utf8');
+const hook=fs.readFileSync(new URL('../src/lib/useJpAnalyzerShadow.js',import.meta.url),'utf8');
+for(const label of ['Preview','Save correction','Undo','Correction saved'])assert.match(panel,new RegExp(label));
+assert.match(panel,/window\.confirm/);assert.match(client,/method: 'POST'/);assert.match(client,/method: 'DELETE'/);
+assert.match(reader,/onCorrectionMutation={handleCorrectionMutation}/);assert.match(reader,/clearJpAnalyzerShadowCache\(\)/);assert.match(reader,/analyzerRefreshKey/);
+assert.match(hook,/refreshKey = 0/);assert.match(hook,/prefetchSignature, refreshKey/);
+console.log('Phase 8.4 teaching lifecycle contract tests passed');

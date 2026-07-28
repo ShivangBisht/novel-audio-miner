@@ -360,6 +360,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   const [status, setStatus] = useState({ type: '', message: '' });
   const [teachingMode, setTeachingMode] = useState(false);
   const [teachingSelection, setTeachingSelection] = useState(null);
+  const [analyzerRefreshKey, setAnalyzerRefreshKey] = useState(0);
   const [enrichResult, setEnrichResult] = useState(null);
   const [isWorking, setIsWorking] = useState(false);
 
@@ -387,7 +388,8 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     isText ? currentData?.plainText : '',
     {
       enabled: true,
-      prefetchTexts: adjacentTextScenes.ordered.map(target => target.text)
+      prefetchTexts: adjacentTextScenes.ordered.map(target => target.text),
+      refreshKey: analyzerRefreshKey
     }
   );
   const jpAnalyzerReader = useMemo(() => {
@@ -525,6 +527,14 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
       startLoadingGlobalFrequency().then(() => setGlobalFreqReady(true));
     } catch (e) { console.error('[Reader] Data load error:', e); }
     setCacheVersion(v => v + 1);
+  }
+
+  async function handleCorrectionMutation(result) {
+    clearJpAnalyzerShadowCache();
+    setAnalyzerRefreshKey(value => value + 1);
+    setSelectedReaderContext(null);
+    setSelectionIssue('');
+    setStatus({ type: 'working', message: `Correction revision ${result.correctionRevisionAfter || 'updated'}; refreshing reader analysis...` });
   }
 
   function handleTextSelection() {
@@ -1022,6 +1032,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
                     selection={teachingSelection}
                     analysis={{ words: jpAnalyzerReader.words, candidates: jpAnalyzerShadow?.result?.readerCandidates || [], selection: jpAnalyzerShadow?.result?.readerSelection || {} }}
                     onClose={() => setTeachingSelection(null)}
+                    onCorrectionMutation={handleCorrectionMutation}
                   />
                 </div>
               )}
