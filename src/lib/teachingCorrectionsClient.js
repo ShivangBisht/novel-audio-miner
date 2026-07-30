@@ -24,3 +24,11 @@ export function saveReaderCorrection(payload, options = {}) {
 export function deactivateReaderCorrection(correctionId, options = {}) {
   return request(`/reader-corrections/${encodeURIComponent(correctionId)}`, { method: 'DELETE', signal: options.signal }, options.baseUrl);
 }
+
+export function listSentenceAnnotations({ sentence, includeInactive = true }, options = {}) {
+  const params = new URLSearchParams({ sentence, includeInactive: String(includeInactive) });
+  return request(`/reader-corrections/annotations?${params}`, { signal: options.signal }, options.baseUrl);
+}
+export function getTeachingIntegrity(options = {}) {
+  return request('/reader-corrections/integrity', { signal: options.signal }, options.baseUrl);
+}
