@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from 'react';
+﻿import { useEffect, useMemo, useState, useRef } from 'react';
 import DictionaryManagementPanel from './DictionaryManagementPanel.jsx';
 import TeachingPanel from './TeachingPanel.jsx';
 import { resolveTeachingSelection, teachingSelectionMessage } from '../lib/teachingSelectionResolver.js';
@@ -24,7 +24,7 @@ import {
   resolveVisibleColourSource
 } from '../lib/colorSource.js';
 
-/* ─── Constants ─── */
+/* â”€â”€â”€ Constants â”€â”€â”€ */
 const DEFAULT_STYLE = { fontSize: 30, lineHeight: 2.05, height: 620, fontFamily: 'mincho' };
 const DEFAULT_FIELDS = {
   expressionAudio: 'ExpressionAudio', selectionText: 'SelectionText',
@@ -38,11 +38,11 @@ const FONT_STACKS = {
 
 function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
 function cleanBookTitle(title) {
-  return String(title || '').replace(/[（(]\s*電撃文庫\s*[）)]/g, '').replace(/【[^】]*(電子|特典|限定|版)[^】]*】/g, '').replace(/\s+/g, ' ').trim();
+  return String(title || '').replace(/[ï¼ˆ(]\s*é›»æ’ƒæ–‡åº«\s*[ï¼‰)]/g, '').replace(/ã€[^ã€‘]*(é›»å­|ç‰¹å…¸|é™å®š|ç‰ˆ)[^ã€‘]*ã€‘/g, '').replace(/\s+/g, ' ').trim();
 }
 
-const dashRegex = /[—―─━ー]/;
-const dashSingleRegex = /[—―─━ー]/g;
+const dashRegex = /[â€”â€•â”€â”ãƒ¼]/;
+const dashSingleRegex = /[â€”â€•â”€â”ãƒ¼]/g;
 
 function fixDashesInHtml(html) {
   try { const div = document.createElement('div'); div.innerHTML = html; wrapIndividualDashes(div); return div.innerHTML; }
@@ -68,7 +68,7 @@ function wrapIndividualDashes(node) {
   }
 }
 
-/* ─── Word colour logic ─── */
+/* â”€â”€â”€ Word colour logic â”€â”€â”€ */
 function getTokenKnownKey(tokenOrWord) {
   if (typeof tokenOrWord === 'string') return tokenOrWord;
   return tokenOrWord?.knownLookupKey || tokenOrWord?.dictionaryForm || tokenOrWord?.surface || '';
@@ -112,7 +112,7 @@ function downloadJsonFile(filename, data) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = filename; document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
 }
 
-/* ─── Stable token range colouriser ─── */
+/* â”€â”€â”€ Stable token range colouriser â”€â”€â”€ */
 function normalizeTokenList(tokens) {
   const normalized = (tokens || [])
     .filter(token => token?.surface)
@@ -296,7 +296,7 @@ function renderStableSentence({ htmlText, plainText, tokens, showFurigana, verti
   return <span>{renderColorizedPlainText(plainText || '', tokens, verticalMode)}</span>;
 }
 
-/* ─── Vertical plain text ─── */
+/* â”€â”€â”€ Vertical plain text â”€â”€â”€ */
 function renderChars(text, verticalMode, keyPrefix = 'c') {
   if (!verticalMode) return (text || '');
   const parts = [], str = text || '';
@@ -325,7 +325,7 @@ function getSelectedWord() {
   return fullText.slice(start, end).trim();
 }
 
-/* ─── Component ─── */
+/* â”€â”€â”€ Component â”€â”€â”€ */
 export default function Reader({ book, flatItems, chapterImageLists, onLoadAnotherBook }) {
   const saved = getProgress(book.id) || {};
   const [itemIndex, setItemIndex] = useState(() => saved.itemIndex || 0);
@@ -798,14 +798,14 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
       setEnrichResult(result);
       updateMiningDebug({ status: 'running', stage: 'enrichmentComplete', enrichmentMethod: result.method || '', source: result.source || '', mode: result.mode || '', unknownCount: result.unknownCount ?? null, chosenSentence: result.sentence || '', sentenceFurigana: result.sentenceFurigana || '', hasAudioUrl: Boolean(result.audioUrl), hasImageUrl: Boolean(result.imageUrl), audioUrl: result.audioUrl || '', imageUrl: result.imageUrl || '' });
       setStatus({ type: 'working', message: 'Downloading media...' });
-      const fieldUpdates = { [fields.sentence]: result.sentence, [fields.sentenceFurigana]: result.sentenceFurigana || result.sentence, [fields.miscInfo]: [cleanedTitle, currentData?.chapterTitle || ''].filter(Boolean).join(' · ') };
+      const fieldUpdates = { [fields.sentence]: result.sentence, [fields.sentenceFurigana]: result.sentenceFurigana || result.sentence, [fields.miscInfo]: [cleanedTitle, currentData?.chapterTitle || ''].filter(Boolean).join(' Â· ') };
       if (result.method !== 'voicevox') fieldUpdates[fields.selectionText] = novelSentence;
       if (result.method === 'voicevox') { try { updateMiningDebug({ status: 'running', stage: 'voicevoxAudio' }); const { audioBase64, filename } = await generateVoicevoxAudio(novelSentence); await ankiRequest('storeMediaFile', { filename, data: audioBase64 }); fieldUpdates[fields.sentenceAudio] = `[sound:${filename}]`; updateMiningDebug({ sentenceAudio: `[sound:${filename}]` }); } catch (err) { updateMiningDebug({ voicevoxError: err?.message || String(err) }); } }
       else if (result.audioUrl) { try { updateMiningDebug({ status: 'running', stage: 'nadeshikoAudio' }); const filename = `nade_audio_${Date.now()}.mp3`; await ankiRequest('storeMediaFile', { filename, url: result.audioUrl }); fieldUpdates[fields.sentenceAudio] = `[sound:${filename}]`; updateMiningDebug({ sentenceAudio: `[sound:${filename}]` }); } catch (e) { updateMiningDebug({ audioError: e?.message || String(e) }); } }
       if (result.method !== 'voicevox' && result.imageUrl) { try { updateMiningDebug({ status: 'running', stage: 'nadeshikoImage' }); const filename = `nade_img_${Date.now()}.jpg`; await ankiRequest('storeMediaFile', { filename, url: result.imageUrl }); fieldUpdates[fields.picture] = `<img src="${filename}">`; updateMiningDebug({ picture: `<img src="${filename}">` }); } catch (e) { updateMiningDebug({ imageError: e?.message || String(e) }); } }
       updateMiningDebug({ status: 'running', stage: 'updateNoteFields', preparedFields: fieldUpdates }); await updateNoteFields(noteId, fieldUpdates);
       if (analyzerCandidate?.knownLookupKey) addKnownWord(miningLookupKey); setCacheVersion(v => v + 1); try { await ankiRequest('guiBrowse', { query: `nid:${noteId}` }); } catch (e) {}
-      updateMiningDebug({ status: 'completed', stage: 'done', updatedNoteId: noteId, preparedFields: fieldUpdates }); setStatus({ type: 'ok', message: `Card updated — ${result.source}${result.mode ? ` (${result.mode})` : ''}` });
+      updateMiningDebug({ status: 'completed', stage: 'done', updatedNoteId: noteId, preparedFields: fieldUpdates }); setStatus({ type: 'ok', message: `Card updated â€” ${result.source}${result.mode ? ` (${result.mode})` : ''}` });
     } catch (err) { updateMiningDebug({ status: 'error', stage: 'failed', error: err?.message || String(err) }); setStatus({ type: 'error', message: err?.message || String(err) }); }
     setIsWorking(false);
   }
@@ -828,22 +828,22 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
           <span>Anki {ankiStatus.connected ? 'Connected' : 'Offline'}</span>
           {comprehension && (
             <>
-              <span>·</span>
+              <span>Â·</span>
               <span>Comprehension: <strong>{comprehension.percent}%</strong> ({comprehension.known}/{comprehension.total})</span>
             </>
           )}
           {isText && !learningOwnership.available && (
             <>
-              <span>·</span>
+              <span>Â·</span>
               <span>Analyzer learning model unavailable</span>
             </>
           )}
         </div>
         <div className="status-right">
           <span>{getCacheSize()} known</span>
-          <span>·</span>
+          <span>Â·</span>
           <span>{!globalFreqReady ? 'Freq loading...' : forceTts ? 'VOICEVOX' : 'Nadeshiko'}</span>
-          <span>·</span>
+          <span>Â·</span>
           <span>{cleanedTitle}</span>
         </div>
       </div>
@@ -857,7 +857,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
       </div>
 
       <div className="main-layout">
-        <div className="sidebar-toggle" onClick={() => setSidebarOpen(v => !v)} title="Toggle sidebar (S)">{sidebarOpen ? '✕' : '☰'}</div>
+        <div className="sidebar-toggle" onClick={() => setSidebarOpen(v => !v)} title="Toggle sidebar (S)">{sidebarOpen ? 'âœ•' : 'â˜°'}</div>
 
         <aside className={`sidebar ${sidebarOpen ? '' : 'collapsed'}`}>
           <h2>{cleanedTitle}</h2>
@@ -883,7 +883,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
                       <button
                         type="button"
                         className={`word-badge ${uw.freq?.category ? `word-freq-${uw.freq.category}` : 'word-freq-unlisted'}`}
-                        title={`${uw.freq ? `Rank ${uw.freq.rank} · ${uw.freq.category}` : 'Unlisted'} · Click to select`}
+                        title={`${uw.freq ? `Rank ${uw.freq.rank} Â· ${uw.freq.category}` : 'Unlisted'} Â· Click to select`}
                         onClick={() => selectNewWord(uw)}>
                         {display}
                       </button>
@@ -892,7 +892,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
                         className="mark-known-mini"
                         title={`Mark ${display} as known`}
                         onClick={() => handleMarkKnown(uw.word)}>
-                        ✓
+                        âœ“
                       </button>
                     </span>
                   );
@@ -926,17 +926,17 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
           <details open={showStyle} onToggle={e => setShowStyle(e.target.open)}>
             <summary style={{ fontSize: '12px', color: 'var(--muted)', cursor: 'pointer' }}>Reader style</summary>
             <div className="style-panel">
-              <div className="style-row"><span>Font size</span><div><button onClick={() => stepStyle('fontSize', -2, 20, 46)}>−</button><b>{readerStyle.fontSize}</b><button onClick={() => stepStyle('fontSize', 2, 20, 46)}>+</button></div></div>
+              <div className="style-row"><span>Font size</span><div><button onClick={() => stepStyle('fontSize', -2, 20, 46)}>âˆ’</button><b>{readerStyle.fontSize}</b><button onClick={() => stepStyle('fontSize', 2, 20, 46)}>+</button></div></div>
               <input type="range" min="20" max="46" value={readerStyle.fontSize} onChange={e => updateStyle({ fontSize: Number(e.target.value) })} />
-              <div className="style-row"><span>Line spacing</span><div><button onClick={() => stepStyle('lineHeight', -0.1, 1.4, 2.8)}>−</button><b>{readerStyle.lineHeight.toFixed(2)}</b><button onClick={() => stepStyle('lineHeight', 0.1, 1.4, 2.8)}>+</button></div></div>
+              <div className="style-row"><span>Line spacing</span><div><button onClick={() => stepStyle('lineHeight', -0.1, 1.4, 2.8)}>âˆ’</button><b>{readerStyle.lineHeight.toFixed(2)}</b><button onClick={() => stepStyle('lineHeight', 0.1, 1.4, 2.8)}>+</button></div></div>
               <input type="range" min="1.4" max="2.8" step="0.05" value={readerStyle.lineHeight} onChange={e => updateStyle({ lineHeight: Number(e.target.value) })} />
-              <div className="style-row"><span>Height</span><div><button onClick={() => stepStyle('height', -40, 420, 900)}>−</button><b>{readerStyle.height}</b><button onClick={() => stepStyle('height', 40, 420, 900)}>+</button></div></div>
+              <div className="style-row"><span>Height</span><div><button onClick={() => stepStyle('height', -40, 420, 900)}>âˆ’</button><b>{readerStyle.height}</b><button onClick={() => stepStyle('height', 40, 420, 900)}>+</button></div></div>
               <input type="range" min="420" max="900" step="20" value={readerStyle.height} onChange={e => updateStyle({ height: Number(e.target.value) })} />
               <button className="secondary" onClick={resetStyle} style={{ marginTop: '8px', width: '100%', fontSize: '11px' }}>Reset to default</button>
             </div>
           </details>
           <details className="dictionary-settings">
-            <summary>Settings · Dictionary Management</summary>
+            <summary>Settings Â· Dictionary Management</summary>
             <DictionaryManagementPanel />
           </details>
           <details className="advanced-settings">
@@ -958,7 +958,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
                   JP Analyzer is the sole linguistic source. Plain Text changes presentation only; invalid analyzer output remains neutral.
                 </span>
               </label>
-              <label style={{ fontSize: '11px', color: 'var(--muted)', display: 'grid', gap: '4px' }}>Session Token: <input value={sessionToken} onChange={e => handleSaveSessionToken(e.target.value)} placeholder="Paste __Secure-nadeshiko.session_token" /><span style={{ fontSize: '10px' }}>F12 → Application → Cookies → nadeshiko.co</span></label>
+              <label style={{ fontSize: '11px', color: 'var(--muted)', display: 'grid', gap: '4px' }}>Session Token: <input value={sessionToken} onChange={e => handleSaveSessionToken(e.target.value)} placeholder="Paste __Secure-nadeshiko.session_token" /><span style={{ fontSize: '10px' }}>F12 â†’ Application â†’ Cookies â†’ nadeshiko.co</span></label>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                 <button className="secondary" onClick={async () => { try { await buildCache(ankiRequest); setCacheVersion(v => v + 1); } catch {} }} style={{ fontSize: '10px', padding: '4px 8px' }}>Rebuild Cache</button>
                 <button className="secondary" onClick={() => { clearCache(); setCacheVersion(v => v + 1); }} style={{ fontSize: '10px', padding: '4px 8px' }}>Clear Anki Cache</button>
@@ -986,7 +986,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
                 <button type="button" className="debug-export-btn" onClick={handleExportDebugReport}>Export Debug Report</button>
                 <button type="button" className="secondary" onClick={handleCopyDiagnosticSummary}>Copy Diagnostic Summary</button>
-                <button type="button" className="secondary" onClick={clearJpAnalyzerShadowCache}>Clear Analyzer Cache</button>
+                <button type="button" className="secondary" onClick={clearJpAnalyzerShadowCache}>Clear Cached Sentence Analyses</button>
               </div>
             </div>
           )}
@@ -1001,12 +1001,12 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
               <span style={{ color: 'var(--muted)', marginLeft: '8px' }}>Ch. {currentChapterIdx + 1}/{book.chapters.length}</span>
             </span>
             <div className="nav-controls">
-              <button onClick={() => setItemIndex(i => Math.max(0, i - 1))} disabled={itemIndex === 0}>←</button>
+              <button onClick={() => setItemIndex(i => Math.max(0, i - 1))} disabled={itemIndex === 0}>â†</button>
               <input type="number" min="1" max={totalScenes} value={goInput} onChange={e => setGoInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleGo(); }} placeholder={`1-${totalScenes}`} />
               <button onClick={handleGo}>Go</button>
-              <button onClick={() => setItemIndex(i => Math.min(totalScenes - 1, i + 1))} disabled={itemIndex === totalScenes - 1}>→</button>
+              <button onClick={() => setItemIndex(i => Math.min(totalScenes - 1, i + 1))} disabled={itemIndex === totalScenes - 1}>â†’</button>
             </div>
-            <span className="item-counter">{isText ? '📖' : '🖼️'} Scene {itemIndex + 1}/{totalScenes}</span>
+            <span className="item-counter">{isText ? 'ðŸ“–' : 'ðŸ–¼ï¸'} Scene {itemIndex + 1}/{totalScenes}</span>
           </div>
 
           {isText && currentData && (
@@ -1031,6 +1031,15 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
                   <TeachingPanel
                     selection={teachingSelection}
                     analysis={{ words: jpAnalyzerReader.words, candidates: jpAnalyzerShadow?.result?.readerCandidates || [], selection: jpAnalyzerShadow?.result?.readerSelection || {} }}
+                    provenance={{
+                      bookId: book?.id || null,
+                      bookTitle: book?.title || book?.fileName || null,
+                      chapterIndex: currentData?.chapterIndex ?? null,
+                      chapterTitle: currentData?.chapterTitle || null,
+                      sceneIndex: itemIndex,
+                      leftContext: flatItems?.[itemIndex - 1]?.type === 'sentence' ? flatItems[itemIndex - 1]?.plainText || null : null,
+                      rightContext: flatItems?.[itemIndex + 1]?.type === 'sentence' ? flatItems[itemIndex + 1]?.plainText || null : null,
+                    }}
                     onClose={() => setTeachingSelection(null)}
                     onCorrectionMutation={handleCorrectionMutation}
                   />
@@ -1054,11 +1063,11 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
             <div className="action-bar">
               <div className="selected-word">
                 <span className="label">Selected:</span>
-                <span className="word" title={selectedText}>{selectedText || '—'}</span>
+                <span className="word" title={selectedText}>{selectedText || 'â€”'}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 {isWorking && <span className="mine-status">Working...</span>}
-                {enrichResult && !isWorking && <span className="mine-status" style={{ color: 'var(--success)' }}>✓ {enrichResult.source}</span>}
+                {enrichResult && !isWorking && <span className="mine-status" style={{ color: 'var(--success)' }}>âœ“ {enrichResult.source}</span>}
                 {(() => {
                   const action = getAnalyzerActionState();
                   if (!selectedText) return <button className="secondary mark-known-btn" disabled>Mark as Known</button>;
@@ -1067,7 +1076,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
                   if (action.canMarkKnown) return <button className="secondary mark-known-btn" onClick={() => handleMarkKnown(selectedText)} disabled={isWorking}>Mark as Known</button>;
                   return <button className="secondary mark-known-btn non-learning-word-btn" disabled title={selectionIssue || action.knownMessage}>{action.knownMessage || 'Not vocabulary-known eligible'}</button>;
                 })()}
-                <button className="mine-btn" onClick={handleMine} disabled={!selectedText || isWorking || (!selectedReaderContext || selectedReaderContext.eligibleForMining !== true)}>⚡ Mine to Anki</button>
+                <button className="mine-btn" onClick={handleMine} disabled={!selectedText || isWorking || (!selectedReaderContext || selectedReaderContext.eligibleForMining !== true)}>âš¡ Mine to Anki</button>
               </div>
             </div>
           )}
@@ -1076,3 +1085,4 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     </>
   );
 }
+
