@@ -205,3 +205,210 @@ The next frontend work must present annotation confidence, optional notes, user 
 
 Colour is part of validation, not a cosmetic afterthought. After a role correction, the UI must verify and expose the corrected span's derived lookup identity, known/frequency state, comprehension inclusion, New Words inclusion, mining eligibility, presentation class, and final visible colour source.
 
+---
+
+## Phase 8 Alpha Frontend Addendum: Analyzer-Native Teaching Supervision
+
+**Addendum date:** 30 July 2026, IST  
+**Current repository phase:** `feature/phase8-teaching-annotations`  
+**Status:** Phase 8.6 established the experimental Teaching panel, confidence, notes, provenance, annotation history, derived-outcome display, Save, replacement, and Undo lifecycle. Production corpus retention is paused pending Phase 8 Alpha contracts.
+
+### Frontend purpose supersession
+
+The Teaching panel's primary purpose is not to show a corrected colour or permanently edit one Reader span. Its primary purpose is to create reliable partial supervision for JP Analyzer while the user reads normally.
+
+The frontend must help the reader state one of the following about an exact reviewed range:
+
+```text
+✓ Analyzer is correct
+Correct analyzer boundary and/or classification
+Reject an analyzer candidate or classification
+Skip / leave unreviewed
+```
+
+The backend remains solely responsible for linguistic evidence, candidate generation, dictionary/KWJA evaluation, scoring, decision comparison, Reader-span construction, learning policy, and corpus persistence.
+
+### Positive examples
+
+A visible tick action must be added:
+
+```text
+✓ Analyzer is correct
+```
+
+This labels only the selected current range as `reviewed-accepted`. All other sentence ranges remain unreviewed. The positive action is mandatory so the corpus does not contain only analyzer errors and become correction-biased.
+
+Future corpus summaries must expose accepted, corrected, rejected, skipped, and unreviewed counts by role and candidate family.
+
+### Teaching workflow v2 controls
+
+Boundary and classification must become separate controls.
+
+```text
+Boundary
+- Keep current
+- Merge into one unit
+- Split at selected offsets
+
+Classification
+- Keep current
+- Vocabulary
+- Grammar
+- Function
+- Name
+- Unresolved
+
+Review outcome
+- ✓ Analyzer is correct
+- Save correction
+- Reject candidate or classification
+```
+
+Quality metadata must also separate:
+
+```text
+Judgment type
+- Objective correction
+- Contextual interpretation
+- Reader presentation preference
+
+Confidence
+- High
+- Medium
+- Low
+- Needs review
+```
+
+The frontend must not supply lookup keys, grammar IDs, name identities, feature values, scores, mining policy, comprehension policy, or colour policy unless a later explicit expert-editing workflow is designed. Those fields are analyzer-derived and displayed for audit only.
+
+### Reasoning preview
+
+Before Save, the panel should present a concise projection of:
+
+```text
+current analyzer structure
+current selected candidate or partition
+relevant alternative candidates
+reader-approved target
+whether the approved candidate already existed
+candidate-generation miss versus ranking/gate/role/identity outcome
+identity confirmation or ambiguity
+partial review coverage
+```
+
+Detailed feature values, utility dimensions, scores, gates, dictionary attempts, and evidence can remain in an expandable diagnostics section.
+
+### Partial review safety
+
+Every interaction must identify exact source offsets and one of:
+
+```text
+reviewed-accepted
+reviewed-corrected
+reviewed-rejected
+unreviewed
+```
+
+The frontend must never imply that the complete sentence was approved merely because one range was corrected or accepted. Whole-sentence review, if added later, requires a separate deliberate action.
+
+### Analyzer-native target display
+
+The post-Teaching target shown in the Reader must come from JP Analyzer in the same authoritative `readerSpans` format used by ordinary analysis.
+
+The frontend must continue to:
+
+- validate sentence equality, offsets, surfaces, order, contiguity, no overlap, and full reconstruction;
+- consume analyzer-owned role, lookup, comprehension, New Words, mining, and colour fields;
+- avoid frontend merge, split, reclassification, lookup repair, or semantic fallback;
+- show neutral readable text when authoritative analysis is unavailable.
+
+### Exact-occurrence behavior
+
+After a Teaching record is saved, an optional linked operational correction may update only the exact current sentence occurrence. This improves the reading session but does not create a global rule.
+
+The frontend should distinguish:
+
+```text
+Saved for this occurrence
+Captured for future tuning
+Approved for export
+```
+
+These are separate states.
+
+### Freshness and failure handling
+
+Preview must carry a server-issued token bound to the sentence, analyzer snapshot, candidate set, dictionary revision, correction revision, assertion, and schema versions. Save must show a clear stale-preview message and require Preview again when any dependency changes.
+
+Structured error states should include:
+
+```text
+stale preview
+target candidate absent
+dictionary revision changed
+range overlap or containment
+source mismatch
+identity unresolved
+post-target validation failed
+persistence or reconciliation failure
+```
+
+History or integrity-loading failure must be visible; the panel must not silently omit unavailable corpus history.
+
+### Current experimental UI caveat
+
+The Phase 8.6 result for reader-taught Vocabulary `響き渡る` showed structural completion but semantic `unresolved`. The frontend correctly displayed the backend output, but the current wording can imply full success. Future UI must separate:
+
+```text
+Structural validation
+Classification validation
+Identity validation
+Policy validation
+Overall review status
+```
+
+Until Phase 8 Alpha contracts are complete, current Teaching records remain test-only and excluded from export.
+
+### Frontend responsibilities by Phase 8 Alpha stage
+
+#### Alpha 1–4
+
+- No new production data capture.
+- Support schema fixtures and contract tests where required.
+- Preserve current exact-selection, Preview, Save, Undo, and history behavior as an experimental shell.
+
+#### Alpha 5–7
+
+- Consume authoritative taught-range analysis and comparison responses.
+- Never derive missing analyzer semantics locally.
+- Display target-candidate presence and failure classification.
+
+#### Alpha 8
+
+- Add the tick action for accepted-current.
+- Separate boundary and classification controls.
+- Add reject-candidate/classification actions.
+- Add judgment type and revised confidence controls.
+- Display concise analyzer choice, alternatives, target, and diagnosis.
+
+#### Alpha 9–10
+
+- Enforce Preview token freshness.
+- Display operation IDs and structured errors.
+- Add review/approval/export states and corpus-balance summaries.
+
+### Frontend acceptance criteria
+
+The Phase 8 Alpha frontend is complete only when:
+
+- exact reviewed ranges can be accepted, corrected, rejected, or skipped;
+- `✓ Analyzer is correct` creates a positive partial label;
+- correction controls separate boundary from classification;
+- the panel displays analyzer-selected versus reader-approved structure;
+- the panel indicates whether the target candidate existed;
+- unreviewed sentence ranges remain explicitly ignored;
+- the Reader target is delivered in normal analyzer `readerSpans` format;
+- stale Preview is rejected by the backend and explained clearly;
+- operational correction, corpus capture, review approval, and export eligibility are visibly distinct;
+- no frontend behavior creates a global linguistic rule.
+
