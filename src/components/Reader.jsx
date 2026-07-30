@@ -986,7 +986,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
                 <button type="button" className="debug-export-btn" onClick={handleExportDebugReport}>Export Debug Report</button>
                 <button type="button" className="secondary" onClick={handleCopyDiagnosticSummary}>Copy Diagnostic Summary</button>
-                <button type="button" className="secondary" onClick={clearJpAnalyzerShadowCache}>Clear Analyzer Cache</button>
+                <button type="button" className="secondary" onClick={clearJpAnalyzerShadowCache}>Clear Cached Sentence Analyses</button>
               </div>
             </div>
           )}
@@ -1031,6 +1031,15 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
                   <TeachingPanel
                     selection={teachingSelection}
                     analysis={{ words: jpAnalyzerReader.words, candidates: jpAnalyzerShadow?.result?.readerCandidates || [], selection: jpAnalyzerShadow?.result?.readerSelection || {} }}
+                    provenance={{
+                      bookId: book?.id || null,
+                      bookTitle: book?.title || book?.fileName || null,
+                      chapterIndex: currentData?.chapterIndex ?? null,
+                      chapterTitle: currentData?.chapterTitle || null,
+                      sceneIndex: itemIndex,
+                      leftContext: flatItems?.[itemIndex - 1]?.type === 'sentence' ? flatItems[itemIndex - 1]?.plainText || null : null,
+                      rightContext: flatItems?.[itemIndex + 1]?.type === 'sentence' ? flatItems[itemIndex + 1]?.plainText || null : null,
+                    }}
                     onClose={() => setTeachingSelection(null)}
                     onCorrectionMutation={handleCorrectionMutation}
                   />
