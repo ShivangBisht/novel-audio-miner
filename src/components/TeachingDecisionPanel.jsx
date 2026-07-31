@@ -1,3 +1,4 @@
+import TeachingCorpusQualityPanel from './TeachingCorpusQualityPanel.jsx';
 import { useEffect, useMemo, useState } from 'react';
 import { captureTeachingSnapshot, createTeachingDecision, listTeachingDecisions, retractTeachingDecision, supersedeTeachingDecision, teachingDecisionDiagnosis, teachingDecisionSummary } from '../lib/teachingDecisionClient.js';
 const JUDGMENTS=[['accepted-current','✓ Analyzer is correct'],['corrected','Record correction'],['rejected','Reject analyzer decision']];
@@ -30,5 +31,6 @@ export default function TeachingDecisionPanel({selection,analysis,provenance}){
    <div className="teaching-existing">{visible.map(r=><div key={r.recordId}><button type="button" className="secondary" onClick={()=>inspect(r)}>Inspect</button><span>{r.judgment} · {r.lifecycle?.status} · {r.failureClassification}</span><code>{r.recordId}</code>{r.lifecycle?.status==='active'&&<><button type="button" onClick={()=>save(r.recordId)} disabled={busy}>Supersede with current review</button><button type="button" className="danger-button" onClick={()=>retract(r.recordId)} disabled={busy}>Retract</button></>}</div>)}</div>
   </details>
   {selectedRecord&&<div className="teaching-preview"><strong>Decision comparison</strong><div><span>Observed</span><code>{JSON.stringify(selectedRecord.decisionComparison?.observedReaderSpan||null)}</code></div><div><span>Approved</span><code>{JSON.stringify(selectedRecord.approvedTarget||null)}</code></div>{diagnosis&&<div className="teaching-preview-meta"><span>Candidate: {diagnosis.candidatePresent?'present':'missing'}</span><span>Boundary: {diagnosis.boundaryMatches?'match':'different'}</span><span>Classification: {diagnosis.classificationMatches?'match':'different'}</span><span>Correction linked: {diagnosis.operationalCorrectionLinked?'yes':'no'}</span></div>}</div>}
+   <TeachingCorpusQualityPanel records={records} />
  </section>;
 }
