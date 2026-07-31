@@ -17,7 +17,7 @@
 - **Phase 8 â€” Teaching, Correction, Annotation Corpus, and Read-Only Tuning: active; Phase 8 Alpha 1â€“10 is complete.**
 - **Current checkpoint:** **Phase 8 Post-Alpha â€” portability, packaging, clarity, and corpus-readiness consolidation.**
 - **Phase 8.10 â€” Phase 8 validation and closeout: pending completion of the Post-Alpha checkpoint.**
-- **Phase 9 â€” Correction data and ranker tuning / later controlled tuning: pending and explicitly not started.**
+- **Phase 9 â€” Correction data and ranker tuning / later controlled tuning: deliberately deferred to the last major implementation phase, after sufficient corpus has been collected through normal reading and maintenance.**
 - **Phase 10 â€” One-application startup: pending.**
 - **Phase 11 â€” Retire Kuromoji: completed early in Phase 5.2E.**
 - **Phase 12 â€” Reading-driven maintenance: ongoing/final operating phase after the remaining implementation phases.**
@@ -127,10 +127,10 @@ The inserted checkpoint is complete only when:
 ### Reiterated remaining roadmap after the inserted checkpoint
 
 1. **Phase 8.10 â€” Phase 8 validation and closeout.** Re-run end-to-end capture, accepted/corrected/rejected labels, persistence, supersession, approval, portable export/import, self-contained packaging, replay/simulation, privacy checks, regression suites, and dictionary invariance. Close Phase 8 only after the Post-Alpha exit criteria pass.
-2. **Phase 9 â€” Correction data and ranker tuning / later controlled tuning.** Use only an approved, sufficiently diverse corpus. Derive or train candidates from train data, select with validation data, evaluate once on protected test data, publish versioned artifacts, and prevent production activation unless separately approved.
-3. **Phase 10 â€” One-application startup.** Provide one reliable startup and shutdown workflow for the Reader, JP Analyzer, local services, health checks, logs, and recovery.
-4. **Phase 11 â€” Retire Kuromoji.** Already completed early in Phase 5.2E; retain as historical roadmap context.
-5. **Phase 12 â€” Reading-driven maintenance.** Continue real reading, Teaching evidence capture, dictionary maintenance, analyzer bug triage, EPUB issue classification, regression monitoring, and controlled future releases.
+2. **Phase 10 â€” One-application startup.** Provide one reliable startup and shutdown workflow for the Reader, JP Analyzer, local services, health checks, logs, and recovery.
+3. **Phase 11 â€” Retire Kuromoji.** Already completed early in Phase 5.2E; retain as historical roadmap context and do not repeat it.
+4. **Phase 12 â€” Reading-driven maintenance and corpus growth.** Continue real reading, Teaching evidence capture, dictionary maintenance, analyzer bug triage, EPUB issue classification, regression monitoring, and controlled releases. Use this operating period to build a sufficiently diverse approved corpus with meaningful train, validation, and protected test coverage.
+5. **Deferred Phase 9 â€” Correction data and ranker tuning / later controlled tuning.** Treat Phase 9 as the last major implementation phase for now. Start it only after corpus sufficiency gates are met. Use train data for derivation, validation data for selection, and protected test data for final evaluation; publish versioned artifacts and prevent production activation unless separately approved. After any approved tuning release, return to Phase 12 reading-driven maintenance.
 
 ### Safety state
 
