@@ -1,3 +1,4 @@
+import TeachingCorpusExportPanel from './TeachingCorpusExportPanel.jsx';
 import {useEffect,useState} from 'react';
 import {getCorpusQualitySummary,getRecordQuality,setRecordQuality} from '../lib/teachingQualityClient.js';
 const STATES=['captured','needs-review','reviewed','approved','rejected-for-corpus'];
@@ -12,5 +13,6 @@ export default function TeachingCorpusQualityPanel({records=[]}){
   <label>Reviewer<input value={reviewer} onChange={e=>setReviewer(e.target.value)} placeholder="Optional reviewer name" /></label><label>Quality note<textarea value={note} onChange={e=>setNote(e.target.value)} /></label>
   <div className="teaching-existing">{records.map(record=><div key={record.recordId}><code>{record.recordId}</code><span>{quality[record.recordId]?.quality_status||'captured'}</span><select disabled={busy} value={quality[record.recordId]?.quality_status||'captured'} onChange={e=>update(record.recordId,e.target.value)}>{STATES.map(x=><option key={x}>{x}</option>)}</select></div>)}</div>
   {message&&<div className="status-message">{message}</div>}
+   <TeachingCorpusExportPanel />
  </details>;
 }
