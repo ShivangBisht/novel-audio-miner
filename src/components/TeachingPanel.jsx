@@ -1,9 +1,10 @@
+import TeachingDecisionPanel from './TeachingDecisionPanel.jsx';
 import { useEffect, useMemo, useState } from 'react';
 import { previewReaderCorrection, saveReaderCorrection, deactivateReaderCorrection, listScopedReaderCorrections } from '../lib/teachingCorrectionsClient.js';
 const ACTIONS=[['show-as-one-unit','Show as one unit',null],['split','Split',null],['mark-vocabulary','Vocabulary','lexical'],['mark-grammar','Grammar','learnable-grammar'],['mark-function','Function','function'],['mark-name','Name','name'],['mark-unresolved','Leave uncoloured','unresolved']];
 const partition=spans=>(spans||[]).map(item=>item.surface).join(' | ');
 const signature=value=>JSON.stringify(value);
-export default function TeachingPanel({ selection, analysis, onClose, onCorrectionMutation }) {
+export default function TeachingPanel({ selection, analysis, provenance, onClose, onCorrectionMutation }) {
  const [action,setAction]=useState('show-as-one-unit'),[splitOffsets,setSplitOffsets]=useState([]),[preview,setPreview]=useState(null),[previewPayload,setPreviewPayload]=useState(null),[scope,setScope]=useState(null),[status,setStatus]=useState({type:'',text:''}),[busy,setBusy]=useState(false),[saved,setSaved]=useState(null);
  const current=ACTIONS.find(item=>item[0]===action)||ACTIONS[0];
  const internalOffsets=useMemo(()=>{const values=[];if(selection?.valid)for(let value=selection.start+1;value<selection.end;value+=1)values.push(value);return values;},[selection]);
@@ -25,6 +26,7 @@ export default function TeachingPanel({ selection, analysis, onClose, onCorrecti
   {status.text&&<div className={`status-message ${status.type}`}>{status.text}</div>}
   {preview&&<div className="teaching-preview"><div><span>Before</span><code>{partition(preview.originalReaderSpans)}</code></div><div><span>After</span><code>{partition(preview.previewReaderSpans)}</code></div><div className="teaching-preview-meta"><span>Role: {preview.derivedCorrection.displayRole}</span><span>Scope: {preview.derivedCorrection.scope}</span><span>Saved: {saved?'yes':'no'}</span></div></div>}
   {saved&&<div className="teaching-saved"><strong>Correction saved</strong><span>ID: {saved.correctionId}</span><span>Revision: {saved.correctionRevisionAfter}</span></div>}
+  <TeachingDecisionPanel selection={selection} analysis={analysis} provenance={provenance} />
   {scope?.corrections?.length>0&&<div className="teaching-existing"><strong>Active corrections in range</strong>{scope.corrections.map(record=><div key={record.correction_id}><span>{record.action} · {record.surface}</span><button type="button" className="danger-button" disabled={busy} onClick={()=>undoCorrection(record)}>Undo</button></div>)}</div>}
  </section>;
 }
