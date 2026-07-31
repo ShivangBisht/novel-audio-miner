@@ -1,6 +1,151 @@
 # Project Snapshot
 
 <!-- PHASE7_FINAL_BEGIN -->
+<!-- PHASE8-ALPHA10-STATUS-UPDATE:START -->
+
+## Status Addendum â€” Phase 8 Alpha 1â€“10 Complete; Post-Alpha Inserted Before Phase 8 Closeout
+
+**Addendum date:** 31 July 2026, IST  
+**Status authority:** This addendum supersedes older â€œcurrent phase,â€ â€œnext checkpoint,â€ and Phase 8 status statements elsewhere in this historical snapshot. Earlier implementation history and embedded source evidence remain retained for audit.  
+**Verified Git baseline:**  
+- **JP Analyzer:** `main` at `f47da3da95438a6b8a8d5eb195b8cfe928b2072f`  
+- **Novel Audio Miner:** `main` at `c3706091a5bdf2f9520f1f27aa318294dd55dd9f`  
+
+### Current roadmap position
+
+- **Phase 7 â€” Dictionary Management and Online Updates: complete.**
+- **Phase 8 â€” Teaching, Correction, Annotation Corpus, and Read-Only Tuning: active; Phase 8 Alpha 1â€“10 is complete.**
+- **Current checkpoint:** **Phase 8 Post-Alpha â€” portability, packaging, clarity, and corpus-readiness consolidation.**
+- **Phase 8.10 â€” Phase 8 validation and closeout: pending completion of the Post-Alpha checkpoint.**
+- **Phase 9 â€” Correction data and ranker tuning / later controlled tuning: pending and explicitly not started.**
+- **Phase 10 â€” One-application startup: pending.**
+- **Phase 11 â€” Retire Kuromoji: completed early in Phase 5.2E.**
+- **Phase 12 â€” Reading-driven maintenance: ongoing/final operating phase after the remaining implementation phases.**
+
+### Phase 8 Alpha 1â€“10 completed outcome
+
+1. **Alpha 1 â€” Current analyzer observability audit: complete.** Analyzer fields, evidence, scoring, gates, conflicts, and final-decision ownership are documented.
+2. **Alpha 2 â€” `AnalyzerDecisionSnapshot.v1`: complete.** Immutable, content-addressed analyzer observations preserve analyzer and dictionary identity.
+3. **Alpha 3 â€” `TeachingDecisionRecord.v1`: complete.** Accepted-current and corrected judgments, asserted target, partial review coverage, confidence, provenance, and immutable digests are represented.
+4. **Alpha 4 â€” Persistent decision store and executable validation: complete.** Snapshots, records, lifecycle events, integrity checks, and contract fixtures are persisted.
+5. **Alpha 5 â€” Authoritative taught-range workflow: complete.** The workflow captures the real analyzer state and reviewer-approved target without creating a second semantic engine.
+6. **Alpha 6 â€” Review management and failure diagnosis: complete.** Inspection, diagnosis, retraction, supersession, and failure classification are supported.
+7. **Alpha 7 â€” Corpus quality governance: complete.** Captured, needs-review, reviewed, approved, and rejected-for-corpus states, reviewer history, duplicate/conflict handling, and eligibility are implemented.
+8. **Alpha 8 â€” Deterministic corpus export dry run: complete.** `TeachingCorpusExport.v1` assigns deterministic train/validation/test splits and produces verifiable artifacts while export and activation remain disabled.
+9. **Alpha 9 â€” Read-only offline evaluation: complete as an evaluation harness.** `TeachingOfflineExperiment.v1` compares a frozen baseline with supplied candidate predictions, reports dependency-aware metrics, leakage and regressions, and does not tune the analyzer.
+10. **Alpha 10 â€” Controlled activation contract: complete in shadow-only form.** `TeachingControlledActivation.v1` supports verifiable plans and observations while Reader replacement, live mutation, dictionary mutation, automatic deployment, and production activation remain disabled.
+
+### Verified current evidence and runtime state
+
+- Teaching records: **3 total, 2 active, 1 superseded**.
+- Approved active records: **2**.
+- Duplicate groups: **0**.
+- Conflicts: **0**.
+- Export eligible: **2**.
+- Corpus split: **train 1, validation 0, test 1**.
+- Corpus digest: `sha256:a5e76119835fb5cbe3798c77a62cc9c110b50c5146edc715d6aff633f50bdd34`.
+- Teaching database integrity: valid, with zero reported issues.
+- Corrected train evidence: `ã ã£ãŸ`, role `function`, diagnosis `candidate-generation-miss`; correction-free analyzer output remains `ã ã£ | ãŸ`.
+- Accepted-current test evidence: `å¼•ãå–ã‚Šã¾ã™`, role `lexical`; candidate, boundary, and classification match the frozen analyzer decision.
+- Dictionary: **4,248,697 entries across 24 dictionaries**, registry consistent.
+- Dictionary SHA-256: `D2D926647AC7035C43971D57D46A270A7112FA21472CDD720879ABABA8E55D85`.
+
+### Teaching requirement clarified
+
+Teaching captures a trustworthy supervised example consisting of:
+
+- exact source sentence, selected range, offsets, surface, and provenance;
+- frozen analyzer before-state, candidate inventory, Reader partition, analyzer identity, and dictionary identity;
+- reviewer judgment, approved boundary, approved classification, optional identity, confidence, and note;
+- failure diagnosis when the analyzer is corrected;
+- immutable record/snapshot digests, lifecycle history, quality history, and deterministic corpus split.
+
+Teaching itself **does not** train the analyzer, generate global rules, mutate dictionaries, activate candidate behavior, or deploy changes. Occurrence-level Reader correction remains a separate operational feature.
+
+### Phase 8 Post-Alpha â€” inserted checkpoint before Phase 8.10 closeout
+
+This checkpoint completes the readiness work exposed by the Alpha verification. It remains part of Phase 8 and remains non-tuning and non-activating.
+
+#### A. Runtime-data portability and safe synchronization
+
+- Add a versioned Teaching export/import contract for moving evidence between work and home computers.
+- Merge by record and snapshot identity; detect digest conflicts rather than overwriting silently.
+- Preserve lifecycle events, quality events, snapshot references, reviewer metadata, and supersession history.
+- Make imports idempotent and provide a dry-run preview before writes.
+- Keep SQLite runtime databases out of Git.
+- Treat operational corrections as a separate optional portability stream.
+
+#### B. Self-contained, privacy-aware corpus packaging
+
+- Produce a tuning-input package that can be verified without direct access to the local Teaching SQLite database.
+- Include source input or an approved redacted representation, frozen baseline spans/candidates, approved target, analyzer identity, dictionary identity, quality approval, split, and record/snapshot digests.
+- Provide private-local and redacted-shareable profiles.
+- Do not embed SQLite bytes by default and do not perform tuning during package generation.
+
+#### C. Teaching UX clarity and guided review
+
+- Clearly separate **Teaching evidence**, **occurrence correction**, **quality approval**, **corpus preparation**, **offline evaluation**, and **shadow activation**.
+- Explain every field and action in plain language.
+- Show before-state, approved target, diagnosis, lifecycle, reviewer, quality state, split, and export eligibility.
+- Never imply that Save, approval, or export preview tunes the analyzer.
+- Keep test-split records visibly evaluation-only.
+
+#### D. Corpus governance and scale readiness
+
+- Add coverage and balance reports by judgment, failure class, asserted role, provenance group, reviewer, and split.
+- Add corpus sufficiency reporting for train, validation, and test.
+- Strengthen leakage prevention using provenance groups, not only record IDs.
+- Distinguish `harness-valid`, `train-fit`, `validation-passed`, `test-passed`, and `deployment-eligible`.
+- Never present train-only improvement as generalization or deployment readiness.
+
+#### E. Tuning-pipeline handoff contract only
+
+- Define versioned future tuning-input and candidate-output contracts.
+- Pin analyzer and dictionary identities and require reproducibility, provenance, evaluation reports, compatibility checks, and rollback metadata.
+- Keep candidate derivation, candidate evaluation, shadow observation, and production deployment as separate controlled stages.
+- Do not implement model training, automatic rule generation, live mutation, or deployment inside Phase 8.
+
+#### F. Snapshot and export cleanup
+
+- Correct snapshot README interpolation and escape corruption.
+- Remove misleading `invalid-record-digest` reasons caused only by hydrated historical lifecycle state.
+- Add a stable consolidated snapshot generator, regression tests, and privacy checks.
+- Redact local paths, book titles, and neighboring novel context in shareable snapshots.
+
+### Phase 8 Post-Alpha exit criteria
+
+The inserted checkpoint is complete only when:
+
+- Teaching evidence can be exported, previewed, verified, merged, and imported without loss of immutable records, snapshots, lifecycle events, or quality history;
+- repeated imports are idempotent and digest conflicts require explicit resolution;
+- a deterministic self-contained corpus package is independently verifiable without opening the local Teaching database;
+- the frontend clearly distinguishes evidence capture, occurrence correction, approval, export preparation, offline evaluation, and shadow activation;
+- corpus reports state whether train, validation, and test evidence is sufficient;
+- the future tuning handoff contract is versioned and documented while tuning remains unimplemented;
+- all Phase 8 and Post-Alpha tests pass, both repositories are synchronized on `main`, and dictionary identity remains unchanged.
+
+### Reiterated remaining roadmap after the inserted checkpoint
+
+1. **Phase 8.10 â€” Phase 8 validation and closeout.** Re-run end-to-end capture, accepted/corrected/rejected labels, persistence, supersession, approval, portable export/import, self-contained packaging, replay/simulation, privacy checks, regression suites, and dictionary invariance. Close Phase 8 only after the Post-Alpha exit criteria pass.
+2. **Phase 9 â€” Correction data and ranker tuning / later controlled tuning.** Use only an approved, sufficiently diverse corpus. Derive or train candidates from train data, select with validation data, evaluate once on protected test data, publish versioned artifacts, and prevent production activation unless separately approved.
+3. **Phase 10 â€” One-application startup.** Provide one reliable startup and shutdown workflow for the Reader, JP Analyzer, local services, health checks, logs, and recovery.
+4. **Phase 11 â€” Retire Kuromoji.** Already completed early in Phase 5.2E; retain as historical roadmap context.
+5. **Phase 12 â€” Reading-driven maintenance.** Continue real reading, Teaching evidence capture, dictionary maintenance, analyzer bug triage, EPUB issue classification, regression monitoring, and controlled future releases.
+
+### Safety state
+
+```text
+Tuning performed: false
+Rules generated: false
+Corpus export activation: false
+Live analyzer mutation: false
+Dictionary mutation: false
+Automatic deployment: false
+Production deployment: false
+```
+
+<!-- PHASE8-ALPHA10-STATUS-UPDATE:END -->
+
 ## Phase 7 — Dictionary Management and Online Updates (Complete)
 
 Completed on 2026-07-27.
