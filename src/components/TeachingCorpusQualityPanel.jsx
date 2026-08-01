@@ -1,22 +1,55 @@
-import TeachingTuningCorpusPanel from "./TeachingTuningCorpusPanel";
-import TeachingCorpusExportPanel from './TeachingCorpusExportPanel.jsx';
-import TeachingPortabilityPanel from './TeachingPortabilityPanel.jsx';
-import {useEffect,useState} from 'react';
-import {getCorpusQualitySummary,getRecordQuality,setRecordQuality} from '../lib/teachingQualityClient.js';
-const STATES=['captured','needs-review','reviewed','approved','rejected-for-corpus'];
-export default function TeachingCorpusQualityPanel({records=[]}){
- const [summary,setSummary]=useState(null),[quality,setQuality]=useState({}),[reviewer,setReviewer]=useState(''),[note,setNote]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
- async function refresh(){try{const total=await getCorpusQualitySummary();const states=await Promise.all(records.map(async r=>[r.recordId,await getRecordQuality(r.recordId)]));const nextQuality=Object.fromEntries(states);setSummary(total);setQuality(nextQuality);const preferredRecord=records.find(r=>(r.lifecycle?.status||'active')==='active'&&(nextQuality[r.recordId]?.reviewer||nextQuality[r.recordId]?.quality_note))||records.find(r=>nextQuality[r.recordId]?.reviewer||nextQuality[r.recordId]?.quality_note);const persisted=preferredRecord?nextQuality[preferredRecord.recordId]:null;setReviewer(current=>current||persisted?.reviewer||'');setNote(current=>current||persisted?.quality_note||'');}catch(e){setMessage(e.message);}}
- useEffect(()=>{refresh();},[records.map(x=>x.recordId).join('|')]);
- async function update(id,state){setBusy(true);try{const current=quality[id]||{};const persistedReviewer=reviewer.trim()||current.reviewer||'';const persistedNote=note.trim()||current.quality_note||'';const result=await setRecordQuality(id,state,persistedReviewer,persistedNote);setReviewer(result.reviewer||persistedReviewer);setNote(result.quality_note||persistedNote);setQuality({...quality,[id]:result});setMessage(`Quality state updated: ${state}. Export remains disabled.`);await refresh();}catch(e){setMessage(e.message);}finally{setBusy(false);}}
- return <details className="teaching-corpus-quality"><summary>Corpus quality review</summary>
-  <p>Use this area only after teaching examples have been captured. Approval marks future export eligibility but does not change analyzer behavior.</p>
-  {summary&&<div className="teaching-preview-meta"><span>Approved: {summary.approvedCount}</span><span>Needs review: {summary.needsReviewCount}</span><span>Duplicates: {summary.duplicateGroupCount}</span><span>Conflicts: {summary.conflictCount}</span><span>Eligible for export: {summary.exportEligibleCount||0}</span><span>Export: disabled</span></div>}
-  <label>Reviewer<input value={reviewer} onChange={e=>setReviewer(e.target.value)} placeholder="Optional reviewer name" /></label><label>Quality note<textarea value={note} onChange={e=>setNote(e.target.value)} /></label>
-  <div className="teaching-existing">{records.map(record=><div key={record.recordId}><code>{record.recordId}</code><span>{quality[record.recordId]?.quality_status||'captured'}</span><select disabled={busy} value={quality[record.recordId]?.quality_status||'captured'} onChange={e=>update(record.recordId,e.target.value)}>{STATES.map(x=><option key={x}>{x}</option>)}</select></div>)}</div>
-  {message&&<div className="status-message">{message}</div>}
-   <TeachingCorpusExportPanel />
-   <TeachingPortabilityPanel />
-      <TeachingTuningCorpusPanel />
- </details>;
+import { useEffect, useState } from 'react';
+import { getCorpusQualitySummary, getRecordQuality, setRecordQuality } from '../lib/teachingQualityClient.js';
+
+const STATES = ['captured', 'needs-review', 'reviewed', 'approved', 'rejected-for-corpus'];
+const LABEL = value => String(value || 'captured').replaceAll('-', ' ');
+
+export default function TeachingCorpusQualityPanel({ records = [] }) {
+  const [summary, setSummary] = useState(null);
+  const [quality, setQuality] = useState({});
+  const [reviewer, setReviewer] = useState('');
+  const [note, setNote] = useState('');
+  const [message, setMessage] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function refresh() {
+    try {
+      const total = await getCorpusQualitySummary();
+      const states = await Promise.all(records.map(async record => [record.recordId, await getRecordQuality(record.recordId)]));
+      const values = Object.fromEntries(states);
+      setSummary(total); setQuality(values);
+      const remembered = records.map(record => values[record.recordId]).find(value => value?.reviewer || value?.quality_note);
+      setReviewer(current => current || remembered?.reviewer || '');
+      setNote(current => current || remembered?.quality_note || '');
+    } catch (error) { setMessage(error.message); }
+  }
+  useEffect(() => { refresh(); }, [records.map(item => item.recordId).join('|')]);
+
+  async function update(recordId, state) {
+    setBusy(true);
+    try {
+      const current = quality[recordId] || {};
+      const result = await setRecordQuality(recordId, state, reviewer.trim() || current.reviewer || '', note.trim() || current.quality_note || '');
+      setQuality(previous => ({ ...previous, [recordId]: result }));
+      setReviewer(result.reviewer || reviewer); setNote(result.quality_note || note);
+      setMessage(`Quality state updated: ${LABEL(state)}. Export remains disabled.`);
+      await refresh();
+    } catch (error) { setMessage(error.message); }
+    finally { setBusy(false); }
+  }
+
+  return <section className="teaching-admin-card teaching-quality-card">
+    <div className="teaching-section-header"><div><span className="teaching-eyebrow">Corpus governance</span><h4>Quality and corpus review</h4><p>Approval makes evidence eligible for a future corpus. It does not tune the analyzer.</p></div></div>
+    {summary && <div className="teaching-metadata-grid">
+      <div className="teaching-metadata-item"><span>Approved</span><strong>{summary.approvedCount}</strong></div>
+      <div className="teaching-metadata-item warning"><span>Needs review</span><strong>{summary.needsReviewCount}</strong></div>
+      <div className="teaching-metadata-item"><span>Duplicates</span><strong>{summary.duplicateGroupCount}</strong></div>
+      <div className="teaching-metadata-item"><span>Conflicts</span><strong>{summary.conflictCount}</strong></div>
+      <div className="teaching-metadata-item"><span>Eligible</span><strong>{summary.exportEligibleCount || 0}</strong></div>
+      <div className="teaching-metadata-item muted"><span>Export</span><strong>Disabled</strong></div>
+    </div>}
+    <div className="teaching-form-grid"><label>Reviewer<input value={reviewer} onChange={event => setReviewer(event.target.value)} placeholder="Optional reviewer name" /></label><label className="wide">Quality note<textarea value={note} onChange={event => setNote(event.target.value)} /></label></div>
+    <div className="teaching-quality-records">{records.map(record => { const state = quality[record.recordId]?.quality_status || 'captured'; return <div key={record.recordId}><div><code>{record.recordId}</code><span>{record.assertions?.boundary?.surface}</span></div><span className={`teaching-status-badge ${state}`}>{LABEL(state)}</span><select disabled={busy} value={state} onChange={event => update(record.recordId, event.target.value)}>{STATES.map(value => <option key={value} value={value}>{LABEL(value)}</option>)}</select></div>; })}</div>
+    {message && <div className="status-message">{message}</div>}
+  </section>;
 }
