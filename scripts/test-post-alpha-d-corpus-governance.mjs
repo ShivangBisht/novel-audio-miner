@@ -1,0 +1,10 @@
+import fs from 'node:fs';
+const dash=fs.readFileSync('src/components/TeachingAdvancedDashboard.jsx','utf8');
+const panel=fs.readFileSync('src/components/TeachingCorpusGovernancePanel.jsx','utf8');
+const client=fs.readFileSync('src/lib/teachingCorpusGovernanceClient.js','utf8');
+const styles=fs.readFileSync('src/styles.css','utf8');
+for(const text of ['Corpus governance','TeachingCorpusGovernancePanel']) if(!dash.includes(text)) throw new Error('Governance dashboard integration missing: '+text);
+for(const text of ['Corpus governance and readiness','Harness valid','Train fit','Readiness gaps and collection recommendations','Provenance and leakage','Deployment']) if(!panel.includes(text)) throw new Error('Governance UI contract missing: '+text);
+for(const text of ['/report','/verify']) if(!client.includes(text)) throw new Error('Governance API client missing: '+text);
+for(const text of ['teaching-governance-maturity','teaching-governance-details','teaching-governance-list']) if(!styles.includes(text)) throw new Error('Governance styling missing: '+text);
+console.log('Post-Alpha D corpus governance checks passed.');
