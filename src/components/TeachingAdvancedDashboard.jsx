@@ -6,6 +6,7 @@ import TeachingTuningCorpusPanel from './TeachingTuningCorpusPanel.jsx';
 import TeachingOfflineEvaluationPanel from './TeachingOfflineEvaluationPanel.jsx';
 import TeachingControlledActivationPanel from './TeachingControlledActivationPanel.jsx';
 import TeachingCorpusGovernancePanel from './TeachingCorpusGovernancePanel.jsx';
+import TeachingTuningHandoffPanel from './TeachingTuningHandoffPanel.jsx';
 
 const TOOLS = [
   ['history', 'Review and history', 'Inspect active records and lifecycle state.'],
@@ -14,6 +15,7 @@ const TOOLS = [
   ['portability', 'Portability', 'Move verified Teaching evidence between computers.'],
   ['packages', 'Corpus packages', 'Preview private, redacted, and dry-run corpus packages.'],
   ['evaluation', 'Offline evaluation', 'Measure supplied candidates without changing the analyzer.'],
+  ['handoff', 'Tuning handoff', 'Inspect future tuning contracts and current readiness blockers.'],
   ['activation', 'Controlled activation', 'Inspect shadow-only eligibility and rollback controls.'],
 ];
 
@@ -38,6 +40,7 @@ export default function TeachingAdvancedDashboard({ records = [], onClose }) {
       {tool === 'portability' && <TeachingPortabilityPanel />}
       {tool === 'packages' && <div className="teaching-tool-stack"><TeachingTuningCorpusPanel /><TeachingCorpusExportPanel /></div>}
       {tool === 'evaluation' && <TeachingOfflineEvaluationPanel />}
+      {tool === 'handoff' && <TeachingTuningHandoffPanel />}
       {tool === 'activation' && <TeachingControlledActivationPanel />}
     </div>}
   </section>;
