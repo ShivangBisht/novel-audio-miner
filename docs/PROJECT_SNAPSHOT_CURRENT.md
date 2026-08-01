@@ -158,13 +158,112 @@ Before Phase 8 is declared complete:
 6. record final merged commit IDs, final counts and digests, and any intentional deviations;
 7. create the final Phase 8 completion tag only after the consolidated closeout commit is pushed.
 
-## Deferred work
+## Phase 8.10 validation and formal closure
 
-- Corpus collection continues through genuine reading and review; records must not be manufactured to satisfy readiness thresholds.
-- Phase 9 tuning remains blocked until governance reports train-fit and later validation/test policies are satisfied.
-- Minor Teaching UI spacing and presentation polish may be handled later without reopening Post-Alpha C.
-- One-application startup remains Phase 10 work.
+Status: Complete
 
-## Resume point
+### Validation gates
 
-Proceed with Phase 8.10 full validation. Treat `main` in both repositories, the versioned schemas, and this snapshot as the source of truth. Do not infer tuning readiness from contract availability alone.
+- JP Analyzer complete test suite: passed, with one intentionally disabled
+  destructive legacy lifecycle case skipped.
+- Novel Audio Miner frontend compatibility and contract suite: 37 passed,
+  0 failed.
+- Vite production build: passed.
+- Required Teaching route groups: 10 of 10 present.
+- Teaching-store integrity: passed.
+- Corpus export verification: passed.
+- Teaching portability round trip: passed.
+- Private and redacted corpus-package verification: passed.
+- Redacted-package privacy scan: passed.
+- Corpus-governance verification: passed.
+- Tuning-input and handoff-manifest verification: passed.
+
+### Runtime identities
+
+Teaching database SHA-256:
+
+`8186748218029B3FE07025829B0852B336F5A8563BA9920CE39724CB6ADFD2AC`
+
+Recovered authoritative dictionary SHA-256:
+
+`C085D5ED805B287509AC5DC0AE26D0766AABA93C077F736D75EA19AD902C63CD`
+
+Dictionary state:
+
+- entries: 4,223,665;
+- installed dictionaries: 24;
+- registry consistency: passed;
+- staged entries: 0;
+- recovery required: false.
+
+Dictionary identity digest:
+
+`sha256:33c600e1ddf565e9f45fa209a483db83e7c25a12d8c7751a5a6d77b314306b6b`
+
+### Contract digests
+
+Corpus digest:
+
+`sha256:3ca7d0a6584e4d3f1febe710f3e6f5670e43b67db8b57793093c5269ad8ebc34`
+
+Governance-report digest:
+
+`sha256:ec8d5b26ba73c76ab0137a686f7e8c820ea2da34057adacfed3171c926a72f60`
+
+Tuning-input digest:
+
+`sha256:9eeaa83086dfe941b25e0f90007a6532bf339595925d9cea4bc8bce63dc30315`
+
+### Governance maturity
+
+- harness valid: passed;
+- train fit: insufficient;
+- validation: unavailable;
+- protected test: not claimed;
+- candidate derivation: not performed;
+- activation: disabled;
+- deployment: disabled.
+
+The insufficient training corpus does not block Phase 8 closure. Phase 8
+established safe evidence capture, correction separation, lifecycle
+management, quality governance, portability, deterministic packaging,
+readiness reporting, and future tuning-handoff contracts. Phase 8 did not
+claim that the corpus was mature enough for tuning.
+
+### Dictionary recovery incident
+
+The full Phase 8.10 test run exposed an isolation defect in
+`test_dictionary_sync_lifecycle.py`. Synthetic lifecycle data had been written
+to the authoritative runtime lexicon.
+
+The contaminated database was preserved for forensic analysis. The runtime
+dictionary was restored from the most recent structurally complete verified
+recovery database. The lifecycle tests were then isolated to an operating-
+system temporary database.
+
+The complete backend suite was rerun with before-and-after dictionary hash
+guards and did not modify the recovered runtime dictionary.
+
+Six dictionary updates performed after the recovered baseline are not present
+in the restored database. Those updates must be reapplied later through the
+controlled dictionary-update workflow.
+
+### Post-Alpha completion
+
+- Post-Alpha A: complete.
+- Post-Alpha B: complete.
+- Post-Alpha C: complete.
+- Post-Alpha D: complete.
+- Post-Alpha E: complete.
+- Post-Alpha F: complete.
+- Phase 8.10: complete.
+- Phase 8: closed.
+
+### Deferred work
+
+- Reapply the six post-recovery dictionary updates.
+- Continue collecting genuine Teaching evidence.
+- Improve corpus balance and independent provenance coverage.
+- Keep tuning, candidate derivation, activation, and deployment blocked until
+  corpus-governance maturity gates are met.
+- Handle additional Teaching UI polish outside Phase 8.
