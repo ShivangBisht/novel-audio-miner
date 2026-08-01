@@ -1,3 +1,4 @@
+import TeachingTuningCorpusPanel from "./TeachingTuningCorpusPanel";
 import TeachingCorpusExportPanel from './TeachingCorpusExportPanel.jsx';
 import TeachingPortabilityPanel from './TeachingPortabilityPanel.jsx';
 import {useEffect,useState} from 'react';
@@ -16,5 +17,6 @@ export default function TeachingCorpusQualityPanel({records=[]}){
   {message&&<div className="status-message">{message}</div>}
    <TeachingCorpusExportPanel />
    <TeachingPortabilityPanel />
+      <TeachingTuningCorpusPanel />
  </details>;
 }
