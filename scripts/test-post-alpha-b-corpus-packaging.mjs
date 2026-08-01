@@ -1,0 +1,1 @@
+import fs from "node:fs";const p=fs.readFileSync(new URL("../src/components/TeachingTuningCorpusPanel.jsx",import.meta.url),"utf8");for(const x of ["private-local","redacted-shareable","does not tune or activate","Preview package","Download package"])if(!p.includes(x))throw new Error(`missing ${x}`);console.log("Post-Alpha B corpus packaging checks passed.");
