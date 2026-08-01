@@ -1,0 +1,14 @@
+import fs from 'node:fs';
+const panel=fs.readFileSync('src/components/TeachingPanel.jsx','utf8');
+const decision=fs.readFileSync('src/components/TeachingDecisionPanel.jsx','utf8');
+const dashboard=fs.readFileSync('src/components/TeachingAdvancedDashboard.jsx','utf8');
+const quality=fs.readFileSync('src/components/TeachingCorpusQualityPanel.jsx','utf8');
+const styles=fs.readFileSync('src/styles.css','utf8');
+for(const text of ['Current result is correct','Change type or colour only','intent === \'keep-current\'','Current type','reviewIntent={reviewIntent}','Already reviewed','Edit this occurrence','Advanced tools'])if(!panel.includes(text))throw new Error('Missing final Teaching contract: '+text);
+if(!panel.includes("intent === 'keep-current' && <div className=\"teaching-readonly-choice\""))throw new Error('Keep-current does not render a read-only type.');
+if(panel.includes("intent === 'keep-current' || intent === 'show-as-one-unit'"))throw new Error('Keep-current still exposes editable role controls.');
+for(const text of ['Review and history','Quality and corpus','Portability','Corpus packages','Offline evaluation','Controlled activation'])if(!dashboard.includes(text))throw new Error('Missing Advanced dashboard category: '+text);
+for(const text of ['Teaching evidence saved','Quality state:','Analyzer tuning:','Global analyzer:'])if(!decision.includes(text))throw new Error('Missing saved receipt field: '+text);
+if(quality.includes('TeachingCorpusExportPanel')||quality.includes('TeachingPortabilityPanel')||quality.includes('TeachingTuningCorpusPanel'))throw new Error('Quality panel still nests unrelated tools.');
+for(const text of ['teaching-intent-grid','teaching-tool-grid','teaching-metadata-grid','teaching-status-badge'])if(!styles.includes(text))throw new Error('Missing final readability style: '+text);
+console.log('Post-Alpha C final closeout checks passed.');

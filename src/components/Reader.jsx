@@ -360,6 +360,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   const [status, setStatus] = useState({ type: '', message: '' });
   const [teachingMode, setTeachingMode] = useState(false);
   const [teachingSelection, setTeachingSelection] = useState(null);
+  const [lastTeachingReceipt, setLastTeachingReceipt] = useState(null);
   const [analyzerRefreshKey, setAnalyzerRefreshKey] = useState(0);
   const [enrichResult, setEnrichResult] = useState(null);
   const [isWorking, setIsWorking] = useState(false);
@@ -1042,6 +1043,8 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
                     }}
                     onClose={() => setTeachingSelection(null)}
                     onCorrectionMutation={handleCorrectionMutation}
+                    lastTeachingReceipt={lastTeachingReceipt}
+                    onTeachingReceipt={setLastTeachingReceipt}
                   />
                 </div>
               )}

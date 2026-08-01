@@ -1,12 +1,25 @@
 const DEFAULT_URL = 'http://127.0.0.1:8766';
 async function request(path, options = {}) {
-  const response = await fetch(`${DEFAULT_URL}${path}`, { headers: { 'Content-Type': 'application/json; charset=utf-8' }, ...options });
+  const response = await fetch(`${DEFAULT_URL}${path}`, {
+    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    ...options,
+  });
+
+  const raw = await response.text();
+  let body = null;
+  try { body = raw ? JSON.parse(raw) : null; } catch { body = null; }
+
   if (!response.ok) {
-    let detail = `${response.status} ${response.statusText}`;
-    try { const body = await response.json(); detail = typeof body?.detail === 'string' ? body.detail : body?.detail?.message || JSON.stringify(body?.detail || body); } catch {}
+    if (body?.detail?.code === 'ANALYZER_SNAPSHOT_UNAVAILABLE') {
+      throw new Error('The analyzer is still processing this sentence. Return to the preview and start the Teaching review again.');
+    }
+    const detail = typeof body?.detail === 'string'
+      ? body.detail
+      : body?.detail?.message || body?.message || raw || `${response.status} ${response.statusText}`;
     throw new Error(`Teaching decision request failed: ${detail}`);
   }
-  return response.json();
+
+  return body;
 }
 export const captureTeachingSnapshot = sentence => request('/teaching-decisions/snapshot', { method:'POST', body:JSON.stringify({sentence}) });
 export const createTeachingDecision = payload => request('/teaching-decisions', { method:'POST', body:JSON.stringify(payload) });

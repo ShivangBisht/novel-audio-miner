@@ -1,0 +1,1 @@
+import fs from 'node:fs';const p=fs.readFileSync('src/components/TeachingPanel.jsx','utf8');for(const t of ['listTeachingDecisions','getRecordQuality','sameRange','showExisting'])if(!p.includes(t))throw new Error('Missing reconstructed receipt contract: '+t);console.log('Post-Alpha C persistent receipt checks passed.');
