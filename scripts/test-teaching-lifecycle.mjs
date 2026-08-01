@@ -1,10 +1,19 @@
-import assert from 'node:assert/strict';import fs from 'node:fs';
-const reader=fs.readFileSync(new URL('../src/components/Reader.jsx',import.meta.url),'utf8');
-const panel=fs.readFileSync(new URL('../src/components/TeachingPanel.jsx',import.meta.url),'utf8');
-const client=fs.readFileSync(new URL('../src/lib/teachingCorrectionsClient.js',import.meta.url),'utf8');
-const hook=fs.readFileSync(new URL('../src/lib/useJpAnalyzerShadow.js',import.meta.url),'utf8');
-for(const label of ['Preview','Save correction','Undo','Correction saved'])assert.match(panel,new RegExp(label));
-assert.match(panel,/window\.confirm/);assert.match(client,/method: 'POST'/);assert.match(client,/method: 'DELETE'/);
-assert.match(reader,/onCorrectionMutation={handleCorrectionMutation}/);assert.match(reader,/clearJpAnalyzerShadowCache\(\)/);assert.match(reader,/analyzerRefreshKey/);
-assert.match(hook,/refreshKey = 0/);assert.match(hook,/prefetchSignature, refreshKey/);
-console.log('Phase 8.4 teaching lifecycle contract tests passed');
+import fs from 'node:fs';
+function read(path){if(!fs.existsSync(path))throw new Error(`Required source file is missing: ${path}`);return fs.readFileSync(path,'utf8');}
+function requireToken(source,token,description){if(!source.includes(token))throw new Error(`Missing Teaching lifecycle contract: ${description} (${token})`);}
+const reader=read('src/components/Reader.jsx');
+const panel=read('src/components/TeachingPanel.jsx');
+const decisionPanel=read('src/components/TeachingDecisionPanel.jsx');
+const client=read('src/lib/teachingCorrectionsClient.js');
+const hook=read('src/lib/useJpAnalyzerShadow.js');
+for(const [token,description] of [
+['previewReaderCorrection','authoritative correction preview'],['saveReaderCorrection','occurrence correction persistence'],['deactivateReaderCorrection','occurrence correction deactivation'],['listScopedReaderCorrections','active correction lookup'],['Preview result','preview action'],['Start Teaching Review','guided review transition'],['saveOccurrenceCorrection','deferred correction save handler'],['Active corrections in this range','active correction visibility'],['Undo','correction undo action'],['window.confirm','undo confirmation'],['onCorrectionMutation','Reader refresh callback']])requireToken(panel,token,description);
+requireToken(decisionPanel,'Save Teaching evidence','Teaching evidence save action');
+requireToken(decisionPanel,'Save evidence and fix this occurrence','combined evidence and correction action');
+requireToken(decisionPanel,'onFinishReview?.(savedResult)','deferred Reader refresh after success receipt');
+for(const [token,description] of [['/reader-corrections/preview','preview API route'],['/reader-corrections/scope','scope API route'],["method: 'POST'",'correction persistence method'],["method: 'DELETE'",'correction deactivation method']])requireToken(client,token,description);
+for(const [token,description] of [['onCorrectionMutation={handleCorrectionMutation}','Reader correction callback wiring'],['clearJpAnalyzerShadowCache()','correction-aware analyzer cache clear'],['analyzerRefreshKey','Reader analyzer refresh revision']])requireToken(reader,token,description);
+requireToken(hook,'refreshKey = 0','analyzer hook refresh input');
+requireToken(hook,'prefetchSignature, refreshKey','refresh-aware analyzer effect dependency');
+if(panel.includes('Save correction'))throw new Error('Obsolete early Save correction action remains in the preview stage.');
+console.log('Phase 8.4 Teaching lifecycle compatibility checks passed.');
