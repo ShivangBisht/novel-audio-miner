@@ -1,4 +1,5 @@
 import TeachingCorpusExportPanel from './TeachingCorpusExportPanel.jsx';
+import TeachingPortabilityPanel from './TeachingPortabilityPanel.jsx';
 import {useEffect,useState} from 'react';
 import {getCorpusQualitySummary,getRecordQuality,setRecordQuality} from '../lib/teachingQualityClient.js';
 const STATES=['captured','needs-review','reviewed','approved','rejected-for-corpus'];
@@ -14,5 +15,6 @@ export default function TeachingCorpusQualityPanel({records=[]}){
   <div className="teaching-existing">{records.map(record=><div key={record.recordId}><code>{record.recordId}</code><span>{quality[record.recordId]?.quality_status||'captured'}</span><select disabled={busy} value={quality[record.recordId]?.quality_status||'captured'} onChange={e=>update(record.recordId,e.target.value)}>{STATES.map(x=><option key={x}>{x}</option>)}</select></div>)}</div>
   {message&&<div className="status-message">{message}</div>}
    <TeachingCorpusExportPanel />
+   <TeachingPortabilityPanel />
  </details>;
 }
