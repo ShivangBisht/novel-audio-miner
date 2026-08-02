@@ -536,3 +536,15 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .application-status-actions { display: flex; gap: 8px; justify-content: flex-end; }
 @media (max-width: 620px) { .application-status { top: 7px; right: 7px; } .application-component-list { grid-template-columns: 1fr; } }
 /* PHASE10_3_APPLICATION_STATUS_END */
+
+/* PHASE10_4_READER_SAFE_STATUS_BEGIN */
+.application-status-slot { flex: 0 0 auto; min-width: 0; }
+.startup-status-slot { position: static; }
+.reader-status-slot { position: relative; z-index: 210; display: flex; align-items: center; justify-content: flex-end; min-height: 48px; padding: 7px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.reader-active .application-status { position: static; top: auto; right: auto; z-index: auto; max-width: 100%; }
+.reader-active .application-status-button { max-width: min(100%, 430px); box-shadow: none; }
+.reader-active .application-status-button > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reader-active .application-status-panel { position: absolute; top: calc(100% + 8px); right: 16px; z-index: 520; }
+@media (max-width: 760px) { .reader-status-slot { justify-content: stretch; padding: 6px 10px; } .reader-active .application-status { width: 100%; } .reader-active .application-status-button { width: 100%; justify-content: center; } .reader-active .application-status-panel { right: 10px; width: calc(100vw - 20px); } }
+/* PHASE10_4_READER_SAFE_STATUS_END */
+
