@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import FileLoader from './components/FileLoader.jsx';
+import ApplicationStatusIndicator from './components/ApplicationStatusIndicator.jsx';
 import Reader from './components/Reader.jsx';
 import { parseEpubFile } from './lib/epubParser.js';
 
@@ -30,6 +31,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      <ApplicationStatusIndicator />
       {!book && <FileLoader onFile={handleFile} loading={loading} />}
       {error && <div className="error-box">{error}</div>}
       {book && (
