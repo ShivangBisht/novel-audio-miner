@@ -1,0 +1,5 @@
+{
+  "schema": "JapaneseNovelMinerIdentity.v1",
+  "application": "JapaneseNovelMiner",
+  "frontend": "NovelAudioMiner"
+}

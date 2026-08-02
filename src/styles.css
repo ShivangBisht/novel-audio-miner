@@ -505,3 +505,46 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .teaching-governance-list li { display: grid; grid-template-columns: 70px 1fr; gap: 10px; padding: 9px; border-radius: 8px; background: rgba(210,153,29,.08); }
 .teaching-governance-list li strong { color: var(--warning); }
 .teaching-governance-list li span { color: var(--text); }
+
+/* PHASE10_3_APPLICATION_STATUS_BEGIN */
+.application-status { position: fixed; top: 10px; right: 12px; z-index: 500; }
+.application-status-button { display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 7px 11px; color: var(--text); background: rgba(22,27,34,.94); border: 1px solid var(--border); border-radius: 999px; box-shadow: 0 8px 24px rgba(0,0,0,.28); }
+.application-status-dot, .application-component-dot { width: 9px; height: 9px; flex: 0 0 9px; border-radius: 50%; background: var(--warning); }
+.application-status-ready .application-status-dot, .application-component-ready .application-component-dot { background: var(--success); }
+.application-status-degraded .application-status-dot, .application-component-degraded .application-component-dot { background: var(--warning); }
+.application-status-failed .application-status-dot, .application-component-failed .application-component-dot { background: var(--danger); }
+.application-status-panel { position: absolute; top: 44px; right: 0; width: min(540px, calc(100vw - 24px)); max-height: min(78vh, 720px); overflow: auto; display: grid; gap: 14px; padding: 16px; background: #111820; border: 1px solid #303947; border-radius: 14px; box-shadow: 0 24px 70px rgba(0,0,0,.62); }
+.application-status-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.application-status-heading > div { display: grid; gap: 3px; }
+.application-status-heading span { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+.application-status-heading h2 { margin: 0; font-size: 19px; }
+.application-component-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.application-component { display: grid; gap: 6px; min-width: 0; padding: 11px; background: rgba(13,17,23,.7); border: 1px solid var(--border); border-radius: 10px; }
+.application-component > div { display: flex; align-items: center; gap: 7px; }
+.application-component p, .application-component small { margin: 0; color: var(--muted); line-height: 1.4; overflow-wrap: anywhere; }
+.application-component-state { width: max-content; padding: 2px 7px; color: var(--muted); background: rgba(139,148,158,.1); border-radius: 999px; font-size: 10px; text-transform: uppercase; }
+.application-problem-list { display: grid; gap: 8px; }
+.application-problem-list h3 { margin: 0; font-size: 14px; }
+.application-status-problem { display: grid; gap: 5px; padding: 11px; color: var(--warning); background: rgba(210,153,29,.1); border: 1px solid rgba(210,153,29,.38); border-radius: 10px; }
+.application-status-problem.fatal { color: var(--danger); background: rgba(248,81,73,.1); border-color: rgba(248,81,73,.38); }
+.application-status-problem code, .application-status-problem span { overflow-wrap: anywhere; }
+.application-technical-details { padding: 10px; background: rgba(13,17,23,.55); border: 1px solid var(--border); border-radius: 10px; }
+.application-technical-details summary { cursor: pointer; font-weight: 700; }
+.application-technical-details > div { display: grid; grid-template-columns: 100px minmax(0,1fr); gap: 9px; margin-top: 8px; }
+.application-technical-details span { color: var(--muted); }
+.application-technical-details code { overflow-wrap: anywhere; }
+.application-status-actions { display: flex; gap: 8px; justify-content: flex-end; }
+@media (max-width: 620px) { .application-status { top: 7px; right: 7px; } .application-component-list { grid-template-columns: 1fr; } }
+/* PHASE10_3_APPLICATION_STATUS_END */
+
+/* PHASE10_4_READER_SAFE_STATUS_BEGIN */
+.application-status-slot { flex: 0 0 auto; min-width: 0; }
+.startup-status-slot { position: static; }
+.reader-status-slot { position: relative; z-index: 210; display: flex; align-items: center; justify-content: flex-end; min-height: 48px; padding: 7px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.reader-active .application-status { position: static; top: auto; right: auto; z-index: auto; max-width: 100%; }
+.reader-active .application-status-button { max-width: min(100%, 430px); box-shadow: none; }
+.reader-active .application-status-button > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reader-active .application-status-panel { position: absolute; top: calc(100% + 8px); right: 16px; z-index: 520; }
+@media (max-width: 760px) { .reader-status-slot { justify-content: stretch; padding: 6px 10px; } .reader-active .application-status { width: 100%; } .reader-active .application-status-button { width: 100%; justify-content: center; } .reader-active .application-status-panel { right: 10px; width: calc(100vw - 20px); } }
+/* PHASE10_4_READER_SAFE_STATUS_END */
+
