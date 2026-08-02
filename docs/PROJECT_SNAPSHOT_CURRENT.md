@@ -267,3 +267,66 @@ controlled dictionary-update workflow.
 - Keep tuning, candidate derivation, activation, and deployment blocked until
   corpus-governance maturity gates are met.
 - Handle additional Teaching UI polish outside Phase 8.
+## Phase 10: One-application startup
+
+Status: Complete
+
+### Delivered milestones
+
+- Phase 10.1: startup-supervisor foundation.
+- Phase 10.2: machine-local auto-discovery and diagnostics.
+- Phase 10.3: in-application startup status and diagnostics.
+- Phase 10.4: hidden one-click Windows launch, Reader-safe status layout,
+  persistent process ownership, diagnostics launcher, and safe shutdown.
+- Phase 10.5: final lifecycle hardening and formal validation.
+
+### User experience
+
+The application now starts from one user action:
+
+`Japanese Novel Miner.vbs`
+
+The launcher starts and supervises JP Analyzer and Novel Audio Miner in the
+background, validates dictionary and KWJA readiness, opens the browser, and
+keeps optional VOICEVOX and AnkiConnect failures nonblocking.
+
+Users no longer need to start JP Analyzer and Novel Audio Miner separately or
+open PowerShell for normal use.
+
+### Supporting launchers
+
+- `Japanese Novel Miner.vbs`: normal hidden startup.
+- `Japanese Novel Miner - Diagnostics.vbs`: read-only startup diagnostics.
+- `Japanese Novel Miner - Stop.vbs`: coordinated safe shutdown.
+
+### Startup safety
+
+- Duplicate launches reuse the running application.
+- Foreign or incompatible services are never terminated.
+- Launcher-owned listener identities are persisted and verified.
+- Safe orphan cleanup is available if the supervisor exits unexpectedly.
+- Final coordinated shutdown records all components as stopped.
+- Startup does not synchronize or mutate the dictionary.
+- No permanent dictionary file hash is hard-coded.
+- Work and home computers may use different resolved paths and dictionaries.
+
+### Reader integration
+
+The application-status control uses reserved Reader layout space and no longer
+overlaps the book toolbar, Load another book control, scene navigation, or
+vertical reading content.
+
+### Teaching behavior
+
+Startup-only operation does not modify the Teaching database.
+
+Entering guided Teaching review may capture an immutable analyzer snapshot for
+reproducibility. No Teaching decision is created until Save Teaching evidence
+is explicitly selected.
+
+### Remaining roadmap
+
+- Phase 9 remains deferred until the governed Teaching corpus is mature.
+- Phase 10 is complete.
+- Phase 11, Kuromoji retirement, was completed early.
+- Phase 12 remains future reading-driven maintenance.
