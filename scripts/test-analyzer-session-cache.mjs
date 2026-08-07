@@ -1,0 +1,35 @@
+import assert from 'node:assert/strict';
+import { AnalyzerSessionCache, MAX_ANALYZER_SESSION_CACHE_ENTRIES } from '../src/lib/analyzerSessionCache.js';
+
+const cache = new AnalyzerSessionCache(5);
+cache.setProtected(['current','previous','next-1']);
+cache.set('current',{id:'current'});
+cache.set('previous',{id:'previous'});
+cache.set('next-1',{id:'next-1'});
+cache.set('old-1',{id:'old-1'});
+cache.set('old-2',{id:'old-2'});
+cache.get('old-1');
+cache.set('new',{id:'new'});
+assert.equal(cache.size,5);
+assert.equal(cache.has('old-1'),true);
+assert.equal(cache.has('old-2'),false);
+assert.equal(cache.has('current'),true);
+assert.equal(cache.has('previous'),true);
+assert.equal(cache.has('next-1'),true);
+assert.equal(cache.snapshot().evictionCount,1);
+
+const rolling = new AnalyzerSessionCache(MAX_ANALYZER_SESSION_CACHE_ENTRIES);
+const protectedIds=['current','previous',...Array.from({length:10},(_,i)=>`next-${i+1}`),'active'];
+rolling.setProtected(protectedIds);
+protectedIds.forEach(id=>rolling.set(id,{id}));
+for(let i=0;i<60;i+=1) rolling.set(`history-${i}`,{id:`history-${i}`});
+assert.equal(rolling.size,MAX_ANALYZER_SESSION_CACHE_ENTRIES);
+protectedIds.forEach(id=>assert.equal(rolling.has(id),true));
+assert.equal(rolling.has('history-0'),false);
+assert.equal(rolling.has('history-59'),true);
+assert.equal(rolling.has('current'),true);
+assert.equal(rolling.snapshot().protectedCount,protectedIds.length);
+rolling.clear();
+assert.equal(rolling.size,0);
+assert.equal(rolling.snapshot().protectedCount,0);
+console.log('bounded analyzer session-cache tests passed');

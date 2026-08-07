@@ -27,7 +27,9 @@
     "test:analyzer-priority-scheduler": "node scripts/test-analyzer-priority-scheduler.mjs",
     "test:phase12b2": "npm run test:scene-prefetch && npm run test:analyzer-priority-scheduler",
     "test:reader-prefetch-integration": "node scripts/test-reader-prefetch-integration.mjs",
-    "test:phase12b3": "npm run test:phase12b2 && npm run test:reader-prefetch-integration"
+    "test:phase12b3": "npm run test:phase12b2 && npm run test:reader-prefetch-integration",
+    "test:analyzer-session-cache": "node scripts/test-analyzer-session-cache.mjs",
+    "test:phase12b4": "npm run test:phase12b3 && npm run test:analyzer-session-cache"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.3",

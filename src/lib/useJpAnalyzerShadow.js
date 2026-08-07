@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { analyzeSentence, getAnalyzerHealth } from './jpAnalyzerClient.js';
 import { AnalyzerPriorityScheduler } from './analyzerPriorityScheduler.js';
+import { AnalyzerSessionCache } from './analyzerSessionCache.js';
 import {
   ANALYZER_CACHE_PREFIX,
   createAnalyzerCacheIdentity,
@@ -14,8 +15,7 @@ import {
   setAnalyzerMetadataLease
 } from './analyzerMetadataLease.js';
 
-const MAX_PERSISTED_ENTRIES = 100;
-const memoryCache = new Map();
+const memoryCache = new AnalyzerSessionCache();
 const pendingRequests = new Map();
 const analysisScheduler = new AnalyzerPriorityScheduler(analyzeSentence);
 let planSequence = 0;
@@ -39,50 +39,17 @@ async function textHash(text) {
     .join('');
 }
 
-function storageKey(identity) { return ANALYZER_CACHE_PREFIX + identity; }
-function removeStored(identity) { try { localStorage.removeItem(storageKey(identity)); } catch {} }
-
-function readStored(identity, text, hash, metadata) {
+function purgeLegacyAnalyzerStorage() {
   try {
-    const raw = localStorage.getItem(storageKey(identity));
-    if (!raw) return null;
-    const record = JSON.parse(raw);
-    const check = validateAnalyzerCacheRecord(record, text, hash, metadata);
-    if (!check.valid) { removeStored(identity); return null; }
-    record.lastAccessedAt = new Date().toISOString();
-    localStorage.setItem(storageKey(identity), JSON.stringify(record));
-    return record;
-  } catch {
-    removeStored(identity);
-    return null;
-  }
-}
-
-function trimStorage() {
-  try {
-    const rows = [];
+    const keys = [];
     for (let index = 0; index < localStorage.length; index += 1) {
       const key = localStorage.key(index);
-      if (!key?.startsWith(ANALYZER_CACHE_PREFIX)) continue;
-      try {
-        const value = JSON.parse(localStorage.getItem(key));
-        rows.push({ key, at: value?.lastAccessedAt || value?.savedAt || '' });
-      } catch {
-        rows.push({ key, at: '' });
-      }
+      if (key?.startsWith(ANALYZER_CACHE_PREFIX)) keys.push(key);
     }
-    rows.sort((a, b) => String(b.at).localeCompare(String(a.at)))
-      .slice(MAX_PERSISTED_ENTRIES)
-      .forEach(row => localStorage.removeItem(row.key));
+    keys.forEach(key => localStorage.removeItem(key));
   } catch {}
 }
-
-function persist(record) {
-  try {
-    localStorage.setItem(storageKey(record.cacheIdentity), JSON.stringify(record));
-    trimStorage();
-  } catch {}
-}
+purgeLegacyAnalyzerStorage();
 
 function requestAnalysis(identity, text, { priority = 0, kind = 'foreground', planId = null } = {}) {
   if (pendingRequests.has(identity)) {
@@ -117,12 +84,11 @@ async function resolveSentence(text, metadata, scheduling = {}) {
   }
   if (memoryRecord) memoryCache.delete(identity);
 
-  const stored = readStored(identity, sourceText, hash, normalizedMetadata);
-  if (stored) {
-    memoryCache.set(identity, stored);
-    return { source: 'persistent-cache', record: stored, elapsedMs: 0, hash, identity };
-  }
 
+  if (scheduling.kind === 'foreground') {
+    const snapshot = analysisScheduler.snapshot();
+    memoryCache.setProtected([identity, ...snapshot.queued.map(target => target.identity), snapshot.active?.identity]);
+  }
   const response = await requestAnalysis(identity, sourceText, scheduling);
   const responseMetadata = normalizeAnalyzerMetadata(response.result);
   if (createAnalyzerCacheIdentity(hash, responseMetadata) !== identity) {
@@ -140,11 +106,10 @@ async function resolveSentence(text, metadata, scheduling = {}) {
   );
   if (!check.valid) throw new Error(`Analyzer result is not cacheable: ${check.reason}`);
   memoryCache.set(identity, record);
-  persist(record);
   return { source: 'network', record, elapsedMs: response.elapsedMs, hash, identity };
 }
 
-export async function prefetchJpAnalyzerSentences(targets, metadata, onProgress) {
+export async function prefetchJpAnalyzerSentences(targets, metadata, onProgress, protectedIdentities = []) {
   const planId = `plan-${++planSequence}`;
   const normalized = [];
   const seen = new Set();
@@ -158,6 +123,13 @@ export async function prefetchJpAnalyzerSentences(targets, metadata, onProgress)
     const hash = await textHash(target.text);
     return { ...target, identity: createAnalyzerCacheIdentity(hash, metadata) };
   }));
+  const schedulerSnapshot = analysisScheduler.snapshot();
+  memoryCache.setProtected([
+    ...prepared.map(target => target.identity),
+    ...protectedIdentities,
+    schedulerSnapshot.active?.identity,
+    ...schedulerSnapshot.queued.filter(target => target.kind === 'foreground').map(target => target.identity)
+  ]);
   analysisScheduler.replaceSpeculativePlan(planId, prepared.map(target => target.identity).filter(Boolean));
   const summary = { targetCount: prepared.length, completedCount: 0, failedCount: 0, results: [] };
   await Promise.all(prepared.map(async target => {
@@ -177,18 +149,12 @@ export function clearJpAnalyzerShadowCache() {
   pendingRequests.clear();
   memoryCache.clear();
   clearAnalyzerMetadataLease();
-  try {
-    const keys = [];
-    for (let index = 0; index < localStorage.length; index += 1) {
-      const key = localStorage.key(index);
-      if (key?.startsWith(ANALYZER_CACHE_PREFIX)) keys.push(key);
-    }
-    keys.forEach(key => localStorage.removeItem(key));
-  } catch {}
+  purgeLegacyAnalyzerStorage();
 }
 
 export function getJpAnalyzerShadowCacheSize() { return memoryCache.size; }
 export function getAnalyzerSchedulerSnapshot() { return analysisScheduler.snapshot(); }
+export function getAnalyzerSessionCacheSnapshot() { return memoryCache.snapshot(); }
 
 export function useJpAnalyzerShadow(text, { enabled = true, prefetchTargets = [], refreshKey = 0 } = {}) {
   const sourceText = String(text ?? '');
@@ -211,6 +177,8 @@ export function useJpAnalyzerShadow(text, { enabled = true, prefetchTargets = []
       setState(previous => previous.status === 'ready'
         ? { ...previous, prefetchStatus: 'running' }
         : previous);
+      const currentHash = await textHash(sourceText.trim());
+      const currentIdentity = createAnalyzerCacheIdentity(currentHash, metadata);
       const summary = await prefetchJpAnalyzerSentences(
         stablePrefetchTargets,
         metadata,
@@ -224,7 +192,8 @@ export function useJpAnalyzerShadow(text, { enabled = true, prefetchTargets = []
             prefetchFailedCount: progress.failedCount,
             inFlightRequestCount: pendingRequests.size
           } : previous);
-        }
+        },
+        [currentIdentity]
       );
       if (disposed || runId !== generation.current) return;
       if (summary.completedCount > 0) {
