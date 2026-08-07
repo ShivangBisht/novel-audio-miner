@@ -9,6 +9,8 @@ import { buildCache, clearCache, getCacheSize, addKnownWord, addManualKnownWord,
 import { getFrequency, startLoadingGlobalFrequency } from '../lib/frequencyMap.js';
 import {
   clearJpAnalyzerShadowCache,
+  getAnalyzerSchedulerSnapshot,
+  getAnalyzerSessionCacheSnapshot,
   useJpAnalyzerShadow
 } from '../lib/useJpAnalyzerShadow.js';
 import { adaptReaderSpansForRendering } from '../lib/analyzerReaderSpanAdapter.js';
@@ -17,6 +19,7 @@ import { resolveAnalyzerPresentationClass } from '../lib/analyzerPresentationPol
 import { buildAnalyzerLearningModel, resolveLearningOwnership } from '../lib/analyzerLearningModel.js';
 import { createAnalyzerReaderContext, getAnalyzerMiningLookupKey, getAnalyzerSelectionActionState, resolveAnalyzerReaderContextForOffsets } from '../lib/analyzerMiningSelection.js';
 import { buildDebugReportV2, buildDiagnosticSummaryV2 } from '../lib/debugReportV2.js';
+import { buildSanitizedAnalyzerObservability } from '../lib/analyzerObservability.js';
 import { ANALYZER_METADATA_LEASE_MS, getAnalyzerMetadataLease } from '../lib/analyzerMetadataLease.js';
 import {
   COLOR_SOURCES,
@@ -680,6 +683,16 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
 
   function createCurrentDebugReport() {
     const actionState = getAnalyzerActionState();
+    const analyzerObservability = buildSanitizedAnalyzerObservability({
+      scheduler: getAnalyzerSchedulerSnapshot(),
+      sessionCache: getAnalyzerSessionCacheSnapshot(),
+      shadow: jpAnalyzerShadow,
+      reader: {
+        currentSceneIndex: itemIndex,
+        forwardTargetCount: analyzerPrefetchPlan.forward.length,
+        hasPreviousProtection: Boolean(analyzerPrefetchPlan.previous)
+      }
+    });
     return buildDebugReportV2({
       application: {
         name: 'Novel Audio Miner',
@@ -758,6 +771,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
         working: isWorking
       },
       prefetchTargets: analyzerPrefetchPlan.ordered,
+      analyzerObservability,
       includeFullParserInventory
     });
   }
