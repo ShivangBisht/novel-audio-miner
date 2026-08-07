@@ -25,7 +25,9 @@
     "test:tokenizer-retirement": "node scripts/test-tokenizer-retirement.mjs",
     "test:debug-report-v2": "node scripts/test-debug-report-v2.mjs",
     "test:analyzer-priority-scheduler": "node scripts/test-analyzer-priority-scheduler.mjs",
-    "test:phase12b2": "npm run test:scene-prefetch && npm run test:analyzer-priority-scheduler"
+    "test:phase12b2": "npm run test:scene-prefetch && npm run test:analyzer-priority-scheduler",
+    "test:reader-prefetch-integration": "node scripts/test-reader-prefetch-integration.mjs",
+    "test:phase12b3": "npm run test:phase12b2 && npm run test:reader-prefetch-integration"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.3",
