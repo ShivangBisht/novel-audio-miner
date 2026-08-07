@@ -31,7 +31,9 @@
     "test:analyzer-session-cache": "node scripts/test-analyzer-session-cache.mjs",
     "test:phase12b4": "npm run test:phase12b3 && npm run test:analyzer-session-cache",
     "test:analyzer-observability": "node scripts/test-analyzer-observability.mjs",
-    "test:phase12b5": "npm run test:phase12b4 && npm run test:analyzer-observability && npm run test:debug-report-v2"
+    "test:phase12b5": "npm run test:phase12b4 && npm run test:analyzer-observability && npm run test:debug-report-v2",
+    "test:phase12b": "npm run test:phase12b5 && npm run test:phase5 && npm run build",
+    "validate:phase12b": "node scripts/validate-phase12b-closeout.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.3",
