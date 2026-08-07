@@ -23,7 +23,9 @@
     "test:analyzer-mining-selection": "node scripts/test-analyzer-mining-selection.mjs",
     "test:analyzer-selection-ownership": "node scripts/test-analyzer-selection-ownership.mjs",
     "test:tokenizer-retirement": "node scripts/test-tokenizer-retirement.mjs",
-    "test:debug-report-v2": "node scripts/test-debug-report-v2.mjs"
+    "test:debug-report-v2": "node scripts/test-debug-report-v2.mjs",
+    "test:analyzer-priority-scheduler": "node scripts/test-analyzer-priority-scheduler.mjs",
+    "test:phase12b2": "npm run test:scene-prefetch && npm run test:analyzer-priority-scheduler"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.3",

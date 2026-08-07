@@ -389,7 +389,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     isText ? currentData?.plainText : '',
     {
       enabled: true,
-      prefetchTexts: analyzerPrefetchPlan.texts,
+      prefetchTargets: analyzerPrefetchPlan.ordered,
       refreshKey: analyzerRefreshKey
     }
   );
