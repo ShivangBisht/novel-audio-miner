@@ -9,14 +9,17 @@ import { buildCache, clearCache, getCacheSize, addKnownWord, addManualKnownWord,
 import { getFrequency, startLoadingGlobalFrequency } from '../lib/frequencyMap.js';
 import {
   clearJpAnalyzerShadowCache,
+  getAnalyzerSchedulerSnapshot,
+  getAnalyzerSessionCacheSnapshot,
   useJpAnalyzerShadow
 } from '../lib/useJpAnalyzerShadow.js';
 import { adaptReaderSpansForRendering } from '../lib/analyzerReaderSpanAdapter.js';
-import { findAdjacentTextScenes } from '../lib/scenePrefetch.js';
+import { planRollingTextScenePrefetch } from '../lib/scenePrefetch.js';
 import { resolveAnalyzerPresentationClass } from '../lib/analyzerPresentationPolicy.js';
 import { buildAnalyzerLearningModel, resolveLearningOwnership } from '../lib/analyzerLearningModel.js';
 import { createAnalyzerReaderContext, getAnalyzerMiningLookupKey, getAnalyzerSelectionActionState, resolveAnalyzerReaderContextForOffsets } from '../lib/analyzerMiningSelection.js';
 import { buildDebugReportV2, buildDiagnosticSummaryV2 } from '../lib/debugReportV2.js';
+import { buildSanitizedAnalyzerObservability } from '../lib/analyzerObservability.js';
 import { ANALYZER_METADATA_LEASE_MS, getAnalyzerMetadataLease } from '../lib/analyzerMetadataLease.js';
 import {
   COLOR_SOURCES,
@@ -381,15 +384,15 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   const isImage = currentItem?.type === 'illustration';
   const currentData = currentItem?.data;
   const cleanedTitle = cleanBookTitle(book.title);
-  const adjacentTextScenes = useMemo(
-    () => findAdjacentTextScenes(displayItems, itemIndex),
+  const analyzerPrefetchPlan = useMemo(
+    () => planRollingTextScenePrefetch(displayItems, itemIndex),
     [displayItems, itemIndex]
   );
   const jpAnalyzerShadow = useJpAnalyzerShadow(
     isText ? currentData?.plainText : '',
     {
       enabled: true,
-      prefetchTexts: adjacentTextScenes.ordered.map(target => target.text),
+      prefetchTargets: analyzerPrefetchPlan.ordered,
       refreshKey: analyzerRefreshKey
     }
   );
@@ -468,6 +471,11 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   const currentChapterImages = chapterImageLists?.[currentChapterIdx] || [];
 
   useEffect(() => { if (itemIndex >= totalScenes) setItemIndex(Math.max(0, totalScenes - 1)); }, [totalScenes, itemIndex]);
+  useEffect(() => {
+    return () => {
+      clearJpAnalyzerShadowCache();
+    };
+  }, [book.id]);
   useEffect(() => {
     saveProgress(book.id, {
       itemIndex,
@@ -675,6 +683,16 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
 
   function createCurrentDebugReport() {
     const actionState = getAnalyzerActionState();
+    const analyzerObservability = buildSanitizedAnalyzerObservability({
+      scheduler: getAnalyzerSchedulerSnapshot(),
+      sessionCache: getAnalyzerSessionCacheSnapshot(),
+      shadow: jpAnalyzerShadow,
+      reader: {
+        currentSceneIndex: itemIndex,
+        forwardTargetCount: analyzerPrefetchPlan.forward.length,
+        hasPreviousProtection: Boolean(analyzerPrefetchPlan.previous)
+      }
+    });
     return buildDebugReportV2({
       application: {
         name: 'Novel Audio Miner',
@@ -752,7 +770,8 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
         enrichment: enrichResult,
         working: isWorking
       },
-      prefetchTargets: adjacentTextScenes.ordered,
+      prefetchTargets: analyzerPrefetchPlan.ordered,
+      analyzerObservability,
       includeFullParserInventory
     });
   }

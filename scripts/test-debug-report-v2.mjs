@@ -15,6 +15,7 @@ const report = buildDebugReportV2({
   selection: { raw: '返', readerContext: span, actionState: { canMine: true } },
   mining: { candidate: span, lookupIdentity: '返事', debug: { status: 'ready' } },
   prefetchTargets: [{ index: 1, text: '次。' }],
+  analyzerObservability: { scheduler: { queuedCount: 2 }, sessionCache: { size: 12, limit: 50 } },
   includeFullParserInventory: false,
   now: new Date('2026-07-24T08:00:00Z')
 });
@@ -24,6 +25,8 @@ assert.equal(report.analyzer.readerSpans.length, 2);
 assert.equal(report.analyzer.contract.valid, true);
 assert.equal(report.cache.resultSource, 'memory-cache');
 assert.equal(report.prefetch.completedCount, 2);
+assert.equal(report.analyzerObservability.scheduler.queuedCount, 2);
+assert.equal(report.analyzerObservability.sessionCache.limit, 50);
 assert.equal(report.selection.readerContext.knownLookupKey, '返事');
 assert.equal(report.mining.lookupIdentity, '返事');
 assert.equal(report.epub.fullInventory, null);
@@ -34,4 +37,6 @@ assert.deepEqual(full.epub.fullInventory.pageList, [1]);
 const summary = buildDiagnosticSummaryV2(report);
 assert.match(summary, /contract=valid/);
 assert.match(summary, /source=memory-cache/);
+assert.match(summary, /queue=2/);
+assert.match(summary, /sessionCache=12\/50/);
 console.log('Debug Report v2 tests passed');

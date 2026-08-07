@@ -1,0 +1,35 @@
+import assert from 'node:assert/strict';
+import { AnalyzerPriorityScheduler } from '../src/lib/analyzerPriorityScheduler.js';
+const deferred=[]; const starts=[];
+const scheduler=new AnalyzerPriorityScheduler(text=>new Promise((resolve,reject)=>{starts.push(text);deferred.push({text,resolve,reject});}));
+const a=scheduler.schedule({identity:'a',text:'prefetch-active',priority:2,kind:'prefetch',planId:'p1'});
+const b=scheduler.schedule({identity:'b',text:'prefetch-queued',priority:3,kind:'prefetch',planId:'p1'});
+const visible=scheduler.schedule({identity:'v',text:'visible',priority:0,kind:'foreground'});
+assert.deepEqual(starts,['prefetch-active']);
+deferred.shift().resolve('A'); await a; await Promise.resolve();
+assert.deepEqual(starts,['prefetch-active','visible']);
+deferred.shift().resolve('V'); assert.equal(await visible,'V'); await Promise.resolve();
+assert.deepEqual(starts,['prefetch-active','visible','prefetch-queued']);
+deferred.shift().resolve('B'); await b;
+const scheduler2=new AnalyzerPriorityScheduler(async text=>text);
+const first=scheduler2.schedule({identity:'same',text:'same',priority:5,kind:'prefetch',planId:'old'});
+const promoted=scheduler2.schedule({identity:'same',text:'same',priority:0,kind:'foreground'});
+assert.equal(first,promoted); await first;
+const scheduler3=new AnalyzerPriorityScheduler(text=>new Promise(resolve=>deferred.push({text,resolve})));
+const active=scheduler3.schedule({identity:'active',text:'active',priority:1,kind:'prefetch',planId:'old'});
+const stale=scheduler3.schedule({identity:'stale',text:'stale',priority:2,kind:'prefetch',planId:'old'});
+stale.catch(()=>{});
+scheduler3.replaceSpeculativePlan('new',['keep']);
+assert.equal(scheduler3.snapshot().staleRemoved,1);
+deferred.shift().resolve('done'); await active;
+console.log('priority-aware single-worker scheduler tests passed');
+
+// Session clear keeps the active request non-cancellable but removes queued work.
+const scheduler4=new AnalyzerPriorityScheduler(text=>new Promise(resolve=>deferred.push({text,resolve})));
+const oldActive=scheduler4.schedule({identity:'old-active',text:'old-active',priority:1,kind:'prefetch',planId:'old'});
+const oldQueued=scheduler4.schedule({identity:'old-queued',text:'old-queued',priority:2,kind:'prefetch',planId:'old'});
+oldQueued.catch(()=>{});
+scheduler4.clear();
+assert.equal(scheduler4.snapshot().queuedCount,0);
+deferred.shift().resolve('finished');
+assert.equal(await oldActive,'finished');

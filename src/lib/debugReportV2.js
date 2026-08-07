@@ -46,7 +46,8 @@ export function buildDebugReportV2({
   analyzerShadow = {}, analyzerReader = {}, analyzerResult = null,
   metadataLease = null, metadataLeaseMs = null,
   presentationSpans = [], learning = {}, selection = {}, mining = {},
-  prefetchTargets = [], includeFullParserInventory = false, now = new Date()
+  prefetchTargets = [], analyzerObservability = null,
+  includeFullParserInventory = false, now = new Date()
 } = {}) {
   const result = analyzerResult || {};
   const report = {
@@ -107,6 +108,7 @@ export function buildDebugReportV2({
       failureCount: analyzerShadow?.prefetchFailedCount ?? 0,
       targets: clone(prefetchTargets)
     },
+    analyzerObservability: clone(analyzerObservability),
     presentation: { spans: clone(presentationSpans) },
     learning: {
       available: Boolean(learning?.available),
@@ -149,6 +151,8 @@ export function buildDiagnosticSummaryV2(report) {
     `source=${r.cache?.resultSource || '-'}`,
     `durationMs=${r.cache?.requestDurationMs ?? '-'}`,
     `prefetch=${r.prefetch?.status || 'idle'} ${r.prefetch?.completedCount || 0}/${r.prefetch?.targetCount || 0}`,
+    `queue=${r.analyzerObservability?.scheduler?.queuedCount ?? '-'}`,
+    `sessionCache=${r.analyzerObservability?.sessionCache?.size ?? '-'}/${r.analyzerObservability?.sessionCache?.limit ?? '-'}`,
     `selection=${r.selection?.readerContext?.surface || r.selection?.raw || '-'}`,
     `mining=${r.mining?.debug?.status || 'idle'}`
   ].join('; ');
