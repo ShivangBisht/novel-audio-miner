@@ -1,5 +1,6 @@
 import JSZip from 'jszip';
 import { splitJapaneseSentences } from './japaneseSentenceSplitter.js';
+import { buildEpubShadowDiagnostics } from './epub/shadowParser.js';
 
 export async function parseEpubFile(file) {
   const zip = await JSZip.loadAsync(await file.arrayBuffer());
@@ -12,6 +13,7 @@ export async function parseEpubFile(file) {
   const spine = readSpine(opf, manifest);
   const toc = await readToc(zip, opf, manifest);
   const meta = readMetadata(opf, file.name);
+  const epubShadowParser = await buildEpubShadowDiagnostics({ zip, opf, opfPath });
 
   const rawPages = [];
   for (const item of spine) {
@@ -69,6 +71,7 @@ export async function parseEpubFile(file) {
     chapters,
     flatItems,
     chapterImageLists,
+    epubShadowParser,
     debug: {
       tocCount: toc.length,
       totalItems: flatItems.length,
