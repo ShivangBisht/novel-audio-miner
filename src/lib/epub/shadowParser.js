@@ -3,6 +3,7 @@ import { extractOrderedContentEvents } from './contentStream.js';
 import { buildEpubParserDiagnostics } from './parserDiagnostics.js';
 import { canonicalizeEpubPath, epubDirname, resolveEpubReference } from './pathResolver.js';
 import { buildEpubBookSectionModel, sanitizeEpubBookSectionModel } from './bookSectionModel.js';
+import { buildEpubImageRoleModel, sanitizeEpubImageRoleModel } from './imageRoleModel.js';
 
 function localElements(root, name) {
   return [...(root?.getElementsByTagName('*') || [])].filter(node =>
@@ -134,11 +135,12 @@ function errorCode(error) {
   const name = String(error?.name || 'Error').replace(/[^A-Za-z0-9]+/g, '_').toUpperCase();
   return `EPUB_SHADOW_${name || 'ERROR'}`;
 }
-function diagnosticView(packageModel, diagnostics, bookModel) {
+function diagnosticView(packageModel, diagnostics, bookModel, imageModel) {
   const documents = diagnostics.documents || [];
   return Object.freeze({
-    schemaVersion: '13.4A', status: 'complete', package: packageModel.diagnostics,
+    schemaVersion: '13.5', status: 'complete', package: packageModel.diagnostics,
     bookModel: sanitizeEpubBookSectionModel(bookModel),
+    imageModel: sanitizeEpubImageRoleModel(imageModel),
     navigationTargets: Object.freeze(packageModel.navigation.slice(0, 500).map(entry => ({
       index: entry.index, sourceType: entry.sourceType, sourceHref: entry.sourceHref,
       documentHref: entry.target.documentHref, fragmentId: entry.target.fragmentId,
@@ -185,10 +187,11 @@ export async function buildEpubShadowDiagnostics({ zip, opf, opfPath }) {
       });
     }
     const bookModel = buildEpubBookSectionModel({ packageModel, documents });
-    return diagnosticView(packageModel, buildEpubParserDiagnostics({ packageModel, documents }), bookModel);
+    const imageModel = buildEpubImageRoleModel({ packageModel, documents, bookModel });
+    return diagnosticView(packageModel, buildEpubParserDiagnostics({ packageModel, documents }), bookModel, imageModel);
   } catch (error) {
     return Object.freeze({
-      schemaVersion: '13.4A', status: 'failed', errorCode: errorCode(error),
+      schemaVersion: '13.5', status: 'failed', errorCode: errorCode(error),
       errorMessage: String(error?.message || error), package: null, navigationTargets: [],
       coverCandidates: [], documents: null, documentSummaries: [], reconstructionFailures: []
     });
