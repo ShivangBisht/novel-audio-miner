@@ -83,14 +83,48 @@ async function navigationInput(zip, opf, opfPath, manifestItems) {
   return entries;
 }
 function visibleDocumentText(document) {
-  const excluded = new Set(['SCRIPT','STYLE','NOSCRIPT','IFRAME','TEMPLATE','RT','RP']);
+  const excluded = new Set([
+    'SCRIPT',
+    'STYLE',
+    'NOSCRIPT',
+    'IFRAME',
+    'TEMPLATE',
+    'RT',
+    'RP'
+  ]);
+
+  function normalizedName(node) {
+    return String(
+      node?.localName ||
+      node?.tagName ||
+      ''
+    ).toUpperCase();
+  }
+
   function walk(node) {
     if (!node) return '';
-    if (node.nodeType === 3) return node.nodeValue || '';
-    if (node.nodeType !== 1 || excluded.has(node.tagName) || node.hidden) return '';
-    if (node.tagName === 'BR') return '\n';
-    return [...node.childNodes].map(walk).join('');
+
+    if (node.nodeType === 3) {
+      return node.nodeValue || '';
+    }
+
+    if (
+      node.nodeType !== 1 ||
+      excluded.has(normalizedName(node)) ||
+      node.hidden
+    ) {
+      return '';
+    }
+
+    if (normalizedName(node) === 'BR') {
+      return '\n';
+    }
+
+    return [...node.childNodes]
+      .map(walk)
+      .join('');
   }
+
   return walk(document.body || document.documentElement);
 }
 function errorCode(error) {
@@ -100,7 +134,7 @@ function errorCode(error) {
 function diagnosticView(packageModel, diagnostics) {
   const documents = diagnostics.documents || [];
   return Object.freeze({
-    schemaVersion: '13.2', status: 'complete', package: packageModel.diagnostics,
+    schemaVersion: '13.3', status: 'complete', package: packageModel.diagnostics,
     navigationTargets: Object.freeze(packageModel.navigation.slice(0, 500).map(entry => ({
       index: entry.index, sourceType: entry.sourceType, sourceHref: entry.sourceHref,
       documentHref: entry.target.documentHref, fragmentId: entry.target.fragmentId,
@@ -149,7 +183,7 @@ export async function buildEpubShadowDiagnostics({ zip, opf, opfPath }) {
     return diagnosticView(packageModel, buildEpubParserDiagnostics({ packageModel, documents }));
   } catch (error) {
     return Object.freeze({
-      schemaVersion: '13.2', status: 'failed', errorCode: errorCode(error),
+      schemaVersion: '13.3', status: 'failed', errorCode: errorCode(error),
       errorMessage: String(error?.message || error), package: null, navigationTargets: [],
       coverCandidates: [], documents: null, documentSummaries: [], reconstructionFailures: []
     });

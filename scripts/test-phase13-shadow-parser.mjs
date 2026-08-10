@@ -19,6 +19,19 @@ const spine=add(opf,new FakeNode('spine')); add(spine,new FakeNode('itemref',{id
 const original=globalThis.DOMParser;
 globalThis.DOMParser=class { parseFromString(){
   const body=new FakeNode('body'); const p=add(body,new FakeNode('p')); p.innerHTML='本文。'; add(p,{nodeType:3,nodeValue:'本文。',parentElement:p});
+  const ruby = add(p, new FakeNode('ruby'));
+add(ruby, {
+  nodeType: 3,
+  nodeValue: '漢字',
+  parentElement: ruby
+});
+
+const rt = add(ruby, new FakeNode('rt'));
+add(rt, {
+  nodeType: 3,
+  nodeValue: 'かんじ',
+  parentElement: rt
+});
   return { body, documentElement:body, querySelector(){return null;}, getElementsByTagName(){return [];} };
 }};
 try {
