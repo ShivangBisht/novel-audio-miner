@@ -35,9 +35,10 @@
     "test:phase12b": "npm run test:phase12b5 && npm run test:phase5 && npm run build",
     "validate:phase12b": "node scripts/validate-phase12b-closeout.mjs",
     "test:phase13.1": "node scripts/test-phase13-epub-paths.mjs && node scripts/test-phase13-package-model.mjs && node scripts/test-phase13-parser-diagnostics.mjs",
-    "test:phase13-baseline": "npm run test:phase13.3 && npm run test:phase12b",
+    "test:phase13-baseline": "npm run test:phase13.4 && npm run test:phase12b",
     "test:phase13.2": "npm run test:phase13.1 && node scripts/test-phase13-content-stream.mjs && node scripts/test-phase13-shadow-parser.mjs && npm run test:debug-report-v2",
-    "test:phase13.3": "npm run test:phase13.2 && node scripts/test-phase13-lossless-content-stream.mjs"
+    "test:phase13.3": "npm run test:phase13.2 && node scripts/test-phase13-lossless-content-stream.mjs",
+    "test:phase13.4": "npm run test:phase13.3 && node scripts/test-phase13-book-sections.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.3",

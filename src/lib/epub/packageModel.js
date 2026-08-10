@@ -56,11 +56,17 @@ export function buildEpubPackageModel({
       target
     });
   });
+  const metadataCover = manifest.get(String(metadata?.coverManifestId || '').trim());
   const coverCandidates = [...manifest.values()].filter(item => item.role === EPUB_RESOURCE_ROLES.COVER_IMAGE);
+  if (metadataCover && !coverCandidates.some(item => item.id === metadataCover.id)) coverCandidates.push(metadataCover);
+  const resolvedGuideReferences = guideReferences.map(item => {
+    const target = resolveEpubReference(canonicalOpfPath, item?.href);
+    return Object.freeze({ ...item, documentHref: target.documentHref, fragmentId: target.fragmentId });
+  });
   return Object.freeze({
     schemaVersion: '13.1', opfPath: canonicalOpfPath, metadata: Object.freeze({ ...metadata }),
     manifest, spine: Object.freeze(spine), navigation: Object.freeze(navigation),
-    guideReferences: Object.freeze(guideReferences.map(item => ({ ...item }))),
+    guideReferences: Object.freeze(resolvedGuideReferences),
     coverCandidates: Object.freeze(coverCandidates),
     diagnostics: Object.freeze({
       manifestCount: manifest.size, spineCount: spine.length, navigationCount: navigation.length,

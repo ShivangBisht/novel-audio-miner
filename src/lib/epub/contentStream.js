@@ -27,16 +27,29 @@ function nearestElement(node) {
   while (current && current.nodeType !== 1) current=current.parentElement || current.parentNode;
   return current || null;
 }
+function structuralIds(node) {
+  const ids=[]; let current=nearestElement(node);
+  while (current?.nodeType===1) {
+    const id=current.getAttribute?.('id');
+    if (id && !ids.includes(id)) ids.push(id);
+    current=current.parentElement;
+  }
+  return ids;
+}
 
 export function extractOrderedContentEvents(document, { documentHref='', spineIndex=-1, resolveReference=value=>value }={}) {
   const root=document?.body || document?.documentElement;
   if (!root) throw new Error('Content stream requires a parsed XHTML/HTML document.');
-  const events=[]; let eventIndex=0; let textNodeCount=0; const ownedTextNodes=new Set();
-  const emit=(type,node,data={})=>events.push(Object.freeze({
-    type,eventIndex:eventIndex++,documentHref,spineIndex,domPath:domPath(nearestElement(node)),
-    elementName:elementName(nearestElement(node)).toLowerCase(),elementId:nearestElement(node)?.getAttribute?.('id')||null,
-    epubType:nearestElement(node)?.getAttribute?.('epub:type')||null,...data
-  }));
+  const events=[]; let eventIndex=0; let textNodeCount=0; const ownedTextNodes=new Set(); let pendingAnchorIds=[];
+  const emit=(type,node,data={})=>{
+    const ancestorIds=[...pendingAnchorIds,...structuralIds(node)].filter((id,index,array)=>array.indexOf(id)===index);
+    pendingAnchorIds=[];
+    events.push(Object.freeze({
+      type,eventIndex:eventIndex++,documentHref,spineIndex,domPath:domPath(nearestElement(node)),
+      elementName:elementName(nearestElement(node)).toLowerCase(),elementId:nearestElement(node)?.getAttribute?.('id')||null,ancestorIds,
+      epubType:nearestElement(node)?.getAttribute?.('epub:type')||null,...data
+    }));
+  };
   function processContainer(container, inheritedType='text-block') {
     let buffer=''; let bufferNode=null; let bufferTextNodeCount=0;
     const type=HEADING_TAGS.has(elementName(container))?'heading':inheritedType;
@@ -52,6 +65,8 @@ export function extractOrderedContentEvents(document, { documentHref='', spineIn
       if (node.nodeType !== 1) return;
       const name=elementName(node);
       if (name === 'RT' || name === 'RP') return;
+      const nodeId=node.getAttribute?.('id');
+      if (nodeId && !(node.childNodes||[]).length && !imageReference(node)) pendingAnchorIds.push(nodeId);
       const ref=imageReference(node);
       if (ref) {
         flush(); const resolved=resolveReference(ref);

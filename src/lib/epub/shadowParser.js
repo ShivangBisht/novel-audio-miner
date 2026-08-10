@@ -2,6 +2,7 @@ import { buildEpubPackageModel } from './packageModel.js';
 import { extractOrderedContentEvents } from './contentStream.js';
 import { buildEpubParserDiagnostics } from './parserDiagnostics.js';
 import { canonicalizeEpubPath, epubDirname, resolveEpubReference } from './pathResolver.js';
+import { buildEpubBookSectionModel, sanitizeEpubBookSectionModel } from './bookSectionModel.js';
 
 function localElements(root, name) {
   return [...(root?.getElementsByTagName('*') || [])].filter(node =>
@@ -34,7 +35,9 @@ function guideInput(opf) {
 }
 function metadataInput(opf) {
   const metadata = firstLocal(opf, 'metadata');
+  const coverMeta = localElements(metadata, 'meta').find(item => String(item.getAttribute('name') || '').toLowerCase() === 'cover');
   return {
+    coverManifestId: coverMeta?.getAttribute('content') || '',
     title: clean(firstLocal(metadata, 'title')?.textContent),
     creator: clean(firstLocal(metadata, 'creator')?.textContent),
     language: clean(firstLocal(metadata, 'language')?.textContent),
@@ -131,10 +134,11 @@ function errorCode(error) {
   const name = String(error?.name || 'Error').replace(/[^A-Za-z0-9]+/g, '_').toUpperCase();
   return `EPUB_SHADOW_${name || 'ERROR'}`;
 }
-function diagnosticView(packageModel, diagnostics) {
+function diagnosticView(packageModel, diagnostics, bookModel) {
   const documents = diagnostics.documents || [];
   return Object.freeze({
-    schemaVersion: '13.3', status: 'complete', package: packageModel.diagnostics,
+    schemaVersion: '13.4A', status: 'complete', package: packageModel.diagnostics,
+    bookModel: sanitizeEpubBookSectionModel(bookModel),
     navigationTargets: Object.freeze(packageModel.navigation.slice(0, 500).map(entry => ({
       index: entry.index, sourceType: entry.sourceType, sourceHref: entry.sourceHref,
       documentHref: entry.target.documentHref, fragmentId: entry.target.fragmentId,
@@ -180,10 +184,11 @@ export async function buildEpubShadowDiagnostics({ zip, opf, opfPath }) {
         visibleText: visibleDocumentText(document), events
       });
     }
-    return diagnosticView(packageModel, buildEpubParserDiagnostics({ packageModel, documents }));
+    const bookModel = buildEpubBookSectionModel({ packageModel, documents });
+    return diagnosticView(packageModel, buildEpubParserDiagnostics({ packageModel, documents }), bookModel);
   } catch (error) {
     return Object.freeze({
-      schemaVersion: '13.3', status: 'failed', errorCode: errorCode(error),
+      schemaVersion: '13.4A', status: 'failed', errorCode: errorCode(error),
       errorMessage: String(error?.message || error), package: null, navigationTargets: [],
       coverCandidates: [], documents: null, documentSummaries: [], reconstructionFailures: []
     });
