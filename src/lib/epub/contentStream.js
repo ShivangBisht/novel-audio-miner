@@ -2,29 +2,33 @@ const EXCLUDED_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'IFRAME', 'TEMPLAT
 const BLOCK_TAGS = new Set(['P','DIV','SECTION','ARTICLE','ASIDE','HEADER','FOOTER','LI','BLOCKQUOTE','PRE','FIGCAPTION','DT','DD','H1','H2','H3','H4','H5','H6']);
 const HEADING_TAGS = new Set(['H1','H2','H3','H4','H5','H6']);
 
+function elementName(node) {
+  return String(node?.localName || node?.tagName || '').toUpperCase();
+}
+
 function cleanText(value) {
   return String(value ?? '').replace(/\u00a0/g, ' ').replace(/[\t\r\f]+/g, ' ').replace(/ {2,}/g, ' ').trim();
 }
 function visibleText(node) {
   if (!node) return '';
   if (node.nodeType === 3) return node.nodeValue ?? '';
-  if (node.nodeType !== 1 || EXCLUDED_TAGS.has(node.tagName) || node.hidden) return '';
-  if (node.tagName === 'RT' || node.tagName === 'RP') return '';
-  if (node.tagName === 'BR') return '\n';
+  if (node.nodeType !== 1 || EXCLUDED_TAGS.has(elementName(node)) || node.hidden) return '';
+  if (elementName(node) === 'RT' || elementName(node) === 'RP') return '';
+  if (elementName(node) === 'BR') return '\n';
   return [...node.childNodes].map(visibleText).join('');
 }
 function domPath(node) {
   const parts=[]; let current=node;
   while (current?.nodeType === 1) {
     let index=1; let sibling=current.previousElementSibling;
-    while (sibling) { if (sibling.tagName === current.tagName) index += 1; sibling=sibling.previousElementSibling; }
-    parts.unshift(`${current.tagName.toLowerCase()}:nth-of-type(${index})`); current=current.parentElement;
+    while (sibling) { if (elementName(sibling) === elementName(current)) index += 1; sibling=sibling.previousElementSibling; }
+    parts.unshift(`${elementName(current).toLowerCase()}:nth-of-type(${index})`); current=current.parentElement;
   }
   return parts.join(' > ');
 }
 function imageReference(node) {
-  if (node.tagName === 'IMG') return node.getAttribute('src') || '';
-  if (node.tagName === 'IMAGE') return node.getAttribute('href') || node.getAttribute('xlink:href') || '';
+  if (elementName(node) === 'IMG') return node.getAttribute('src') || '';
+  if (elementName(node) === 'IMAGE') return node.getAttribute('href') || node.getAttribute('xlink:href') || '';
   return '';
 }
 
@@ -34,11 +38,11 @@ export function extractOrderedContentEvents(document, { documentHref = '', spine
   const events=[]; let eventIndex=0;
   const emit=(type,node,data={})=>events.push(Object.freeze({
     type, eventIndex:eventIndex++, documentHref, spineIndex, domPath:domPath(node),
-    elementName:String(node?.tagName ?? '').toLowerCase(), elementId:node?.getAttribute?.('id') || null,
+    elementName:elementName(node).toLowerCase(), elementId:node?.getAttribute?.('id') || null,
     epubType:node?.getAttribute?.('epub:type') || null, ...data
   }));
   function walk(node, blockOwner=null) {
-    if (!node || (node.nodeType === 1 && (EXCLUDED_TAGS.has(node.tagName) || node.hidden))) return;
+    if (!node || (node.nodeType === 1 && (EXCLUDED_TAGS.has(elementName(node)) || node.hidden))) return;
     if (node.nodeType === 1) {
       const ref=imageReference(node);
       if (ref) {
@@ -47,13 +51,13 @@ export function extractOrderedContentEvents(document, { documentHref = '', spine
           alt:node.getAttribute('alt') || node.getAttribute('title') || '' });
         return;
       }
-      if (node.tagName === 'BR') { emit('soft-break',node); return; }
-      if (node.tagName === 'HR') { emit('thematic-break',node); return; }
-      if (BLOCK_TAGS.has(node.tagName)) {
-        const nestedBlocks=[...node.children].filter(child => BLOCK_TAGS.has(child.tagName));
+      if (elementName(node) === 'BR') { emit('soft-break',node); return; }
+      if (elementName(node) === 'HR') { emit('thematic-break',node); return; }
+      if (BLOCK_TAGS.has(elementName(node))) {
+        const nestedBlocks=[...node.children].filter(child => BLOCK_TAGS.has(elementName(child)));
         if (!nestedBlocks.length) {
           const plainText=cleanText(visibleText(node));
-          if (plainText) emit(HEADING_TAGS.has(node.tagName)?'heading':'text-block',node,{ plainText, htmlText:node.innerHTML || '', headingLevel:HEADING_TAGS.has(node.tagName)?Number(node.tagName.slice(1)):null });
+          if (plainText) emit(HEADING_TAGS.has(elementName(node))?'heading':'text-block',node,{ plainText, htmlText:node.innerHTML || '', headingLevel:HEADING_TAGS.has(elementName(node))?Number(elementName(node).slice(1)):null });
           for (const child of node.children) if (imageReference(child)) walk(child,node);
           return;
         }
