@@ -41,7 +41,7 @@
     "test:phase13.4": "npm run test:phase13.3 && node scripts/test-phase13-book-sections.mjs",
     "test:phase13.5": "npm run test:phase13.4 && node scripts/test-phase13-image-roles.mjs",
     "test:phase13.6": "npm run test:phase13.5 && node scripts/test-phase13-reader-activation.mjs",
-    "test:phase13.6a": "npm run test:phase13.6"
+    "test:phase13.6a": "npm run test:phase13.6 && node scripts/test-phase13-sidebar-sections.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.3",
