@@ -131,13 +131,32 @@ function visibleDocumentText(document) {
 
   return walk(document.body || document.documentElement);
 }
+function structuralNavigationProfile(document, documentHref, packageModel) {
+  const anchors = localElements(document, 'a').filter(anchor => anchor.getAttribute('href'));
+  const resolved = anchors.map(anchor => resolveEpubReference(documentHref, anchor.getAttribute('href') || '')).filter(target => target.documentHref);
+  const distinctTargets = new Set(resolved.map(target => `${target.documentHref}#${target.fragmentId || ''}`));
+  const navigationTargets = new Set((packageModel.navigation || []).map(entry => `${entry.target.documentHref}#${entry.target.fragmentId || ''}`));
+  const targetMatches = resolved.filter(target => navigationTargets.has(`${target.documentHref}#${target.fragmentId || ''}`) || [...navigationTargets].some(key => key.startsWith(`${target.documentHref}#`))).length;
+  const visibleLength = clean(visibleDocumentText(document)).length;
+  const linkTextLength = anchors.reduce((sum, anchor) => sum + clean(anchor.textContent).length, 0);
+  const linkDensity = visibleLength ? Math.min(1, linkTextLength / visibleLength) : 0;
+  const targetAgreement = resolved.length ? targetMatches / resolved.length : 0;
+  const evidence = [];
+  if (anchors.length >= 3) evidence.push('multiple-links');
+  if (distinctTargets.size >= 3) evidence.push('multiple-distinct-targets');
+  if (targetAgreement >= 0.6) evidence.push('navigation-target-agreement');
+  if (linkDensity >= 0.5) evidence.push('link-dense-document');
+  if (visibleLength <= 1200) evidence.push('limited-continuous-text');
+  const isNavigationList = evidence.includes('multiple-links') && evidence.includes('multiple-distinct-targets') && evidence.includes('navigation-target-agreement') && evidence.includes('link-dense-document') && evidence.length >= 4;
+  return Object.freeze({ anchorCount: anchors.length, distinctTargetCount: distinctTargets.size, targetAgreement, linkDensity, visibleLength, isNavigationList, evidence: Object.freeze(evidence) });
+}
 function errorCode(error) {
   const name = String(error?.name || 'Error').replace(/[^A-Za-z0-9]+/g, '_').toUpperCase();
   return `EPUB_SHADOW_${name || 'ERROR'}`;
 }
-function diagnosticView(packageModel, diagnostics, bookModel, imageModel) {
+function diagnosticView(packageModel, diagnostics, bookModel, imageModel, runtime) {
   const documents = diagnostics.documents || [];
-  return Object.freeze({
+  const view = {
     schemaVersion: '13.5', status: 'complete', package: packageModel.diagnostics,
     bookModel: sanitizeEpubBookSectionModel(bookModel),
     imageModel: sanitizeEpubImageRoleModel(imageModel),
@@ -159,7 +178,9 @@ function diagnosticView(packageModel, diagnostics, bookModel, imageModel) {
     }),
     documentSummaries: Object.freeze(documents.slice(0, 1000)),
     reconstructionFailures: Object.freeze(documents.filter(item=>!item.reconstructed).slice(0, 200))
-  });
+  };
+  Object.defineProperty(view, 'runtime', { value: runtime, enumerable: false });
+  return Object.freeze(view);
 }
 
 export async function buildEpubShadowDiagnostics({ zip, opf, opfPath }) {
@@ -183,12 +204,16 @@ export async function buildEpubShadowDiagnostics({ zip, opf, opfPath }) {
       });
       documents.push({
         documentHref: resource.canonicalHref, spineIndex: spineItem.spineIndex,
-        visibleText: visibleDocumentText(document), events
+        visibleText: visibleDocumentText(document),
+        navigationProfile: structuralNavigationProfile(document, resource.canonicalHref, packageModel),
+        events
       });
     }
     const bookModel = buildEpubBookSectionModel({ packageModel, documents });
     const imageModel = buildEpubImageRoleModel({ packageModel, documents, bookModel });
-    return diagnosticView(packageModel, buildEpubParserDiagnostics({ packageModel, documents }), bookModel, imageModel);
+    const diagnostics = buildEpubParserDiagnostics({ packageModel, documents });
+    const runtime = Object.freeze({ packageModel, documents: Object.freeze(documents), bookModel, imageModel, diagnostics });
+    return diagnosticView(packageModel, diagnostics, bookModel, imageModel, runtime);
   } catch (error) {
     return Object.freeze({
       schemaVersion: '13.5', status: 'failed', errorCode: errorCode(error),

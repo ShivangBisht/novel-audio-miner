@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
 import { splitJapaneseSentences } from './japaneseSentenceSplitter.js';
 import { buildEpubShadowDiagnostics } from './epub/shadowParser.js';
+import { activateReaderModel } from './epub/readerModelActivation.js';
 
 export async function parseEpubFile(file) {
   const zip = await JSZip.loadAsync(await file.arrayBuffer());
@@ -62,7 +63,7 @@ export async function parseEpubFile(file) {
     }
   });
 
-  return {
+  const legacyResult = {
     id: await quickHash(`${file.name}:${file.size}:${file.lastModified}`),
     fileName: file.name,
     title: meta.title || file.name.replace(/\.epub$/i, ''),
@@ -86,6 +87,9 @@ export async function parseEpubFile(file) {
       pageList: rawPages.map(page => ({ href: page.href, title: page.title, orderedItemCount: (page.orderedItems || []).length, sentenceCount: (page.sentences || []).length, imageCount: (page.images || []).length }))
     }
   };
+  const mode = import.meta.env.VITE_EPUB_READER_MODEL_MODE || 'legacy';
+  const activated = await activateReaderModel({ mode, legacy: legacyResult, runtime: epubShadowParser.runtime, zip });
+  return { ...activated, readerModelActivation: activated.activation };
 }
 
 // ─── Rest of the file unchanged (extractPageWithOrdering, fillImageDataUris, helpers) ───
