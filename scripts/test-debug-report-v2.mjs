@@ -4,7 +4,7 @@ import { buildDebugReportV2, buildDiagnosticSummaryV2, DEBUG_REPORT_SCHEMA_VERSI
 const span = { start: 0, end: 2, surface: '返事', displayRole: 'lexical', knownLookupKey: '返事', frequencyLookupKey: '返事', countsForComprehension: true, showInNewWords: true, eligibleForMining: true };
 const report = buildDebugReportV2({
   application: { name: 'Novel Audio Miner', version: '4.1.0' },
-  book: { id: 'b', title: 'Book', chapters: [{}], toc: [{}], epubShadowParser: { schemaVersion: '13.2', status: 'complete', documents: { processedCount: 1 } }, debug: { totalItems: 5, sentenceCount: 4, imageCount: 1, pageList: [{ href: 'a' }] } },
+  book: { id: 'b', title: 'Book', chapters: [{}], toc: [{}], epubRuntimeDiagnostics: { schemaVersion: '13-closeout', status: 'complete', documents: { processedCount: 1 } }, debug: { totalItems: 5, sentenceCount: 4, imageCount: 1, pageList: [{ href: 'a' }] } },
   reader: { sceneIndex: 0, sceneNumber: 1, totalScenes: 5 },
   scene: { plainText: '返事。', htmlText: '返事。', parserDebug: { pageHref: 'a' } },
   analyzerShadow: { status: 'ready', source: 'memory-cache', elapsedMs: 0, cacheIdentity: 'id', cacheReason: 'hit', analyzerVersion: '11.9.0', readerSpanSchemaVersion: '1.1', correctionRevision: 'rev', prefetchStatus: 'complete', prefetchTargetCount: 2, prefetchCompletedCount: 2, prefetchFailedCount: 0 },
@@ -30,8 +30,8 @@ assert.equal(report.analyzerObservability.sessionCache.limit, 50);
 assert.equal(report.selection.readerContext.knownLookupKey, '返事');
 assert.equal(report.mining.lookupIdentity, '返事');
 assert.equal(report.epub.fullInventory, null);
-assert.equal(report.epub.shadowParser.status, 'complete');
-assert.equal(report.epub.shadowParser.documents.processedCount, 1);
+assert.equal(report.epub.authoritativeParser.status, 'complete');
+assert.equal(report.epub.authoritativeParser.documents.processedCount, 1);
 assert.equal('debugPanels' in report, false);
 assert.equal('tokens' in report, false);
 const full = buildDebugReportV2({ book: { debug: { pageList: [1] } }, includeFullParserInventory: true });

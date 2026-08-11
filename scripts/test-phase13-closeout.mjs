@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const read=path=>fs.readFileSync(new URL(`../${path}`,import.meta.url),'utf8');
+const parser=read('src/lib/epubParser.js');
+const runtime=read('src/lib/epub/epubRuntime.js');
+const reader=read('src/lib/epub/readerModel.js');
+const report=read('src/lib/debugReportV2.js');
+const production=[parser,runtime,reader,report].join('\n');
+assert.doesNotMatch(parser,/extractPageWithOrdering|buildSectionsFromToc|combinePages|looksLikeContentsPage|fillImageDataUris|rawPages|isGenericTocTitle/);
+assert.doesNotMatch(production,/qualified-shadow|shadow-compare|VITE_EPUB_READER_MODEL_MODE|activateReaderModel|buildQualifiedReaderModel|buildEpubShadowDiagnostics|qualifyShadowRuntime/);
+assert.match(parser,/buildEpubRuntime/);assert.match(parser,/buildEpubReaderModel/);
+assert.match(report,/authoritativeParser/);assert.match(report,/readerModelQualification/);
+assert.equal(fs.existsSync(new URL('../src/lib/epub/readerModelActivation.js',import.meta.url)),false);
+assert.equal(fs.existsSync(new URL('../src/lib/epub/shadowParser.js',import.meta.url)),false);
+assert.equal(fs.existsSync(new URL('../src/lib/epub/qualifiedReaderModel.js',import.meta.url)),false);
+console.log('Phase 13 closeout retirement tests passed');

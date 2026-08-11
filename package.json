@@ -36,13 +36,14 @@
     "validate:phase12b": "node scripts/validate-phase12b-closeout.mjs",
     "test:phase13.1": "node scripts/test-phase13-epub-paths.mjs && node scripts/test-phase13-package-model.mjs && node scripts/test-phase13-parser-diagnostics.mjs",
     "test:phase13-baseline": "npm run test:phase13.5 && npm run test:phase12b",
-    "test:phase13.2": "npm run test:phase13.1 && node scripts/test-phase13-content-stream.mjs && node scripts/test-phase13-shadow-parser.mjs && npm run test:debug-report-v2",
+    "test:phase13.2": "npm run test:phase13.1 && node scripts/test-phase13-content-stream.mjs && node scripts/test-phase13-runtime.mjs && npm run test:debug-report-v2",
     "test:phase13.3": "npm run test:phase13.2 && node scripts/test-phase13-lossless-content-stream.mjs",
     "test:phase13.4": "npm run test:phase13.3 && node scripts/test-phase13-book-sections.mjs",
     "test:phase13.5": "npm run test:phase13.4 && node scripts/test-phase13-image-roles.mjs",
-    "test:phase13.6": "npm run test:phase13.5 && node scripts/test-phase13-reader-activation.mjs",
+    "test:phase13.6": "npm run test:phase13.5 && node scripts/test-phase13-reader-model.mjs",
     "test:phase13.6a": "npm run test:phase13.6 && node scripts/test-phase13-sidebar-sections.mjs",
-    "test:phase13.6b": "npm run test:phase13.6a && node scripts/test-phase13-authoritative-parser.mjs"
+    "test:phase13.6b": "npm run test:phase13.6a && node scripts/test-phase13-authoritative-parser.mjs",
+    "test:phase13": "npm run test:phase13.6b && node scripts/test-phase13-closeout.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.3",

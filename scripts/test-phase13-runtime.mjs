@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { buildEpubShadowDiagnostics, sanitizeEpubShadowDiagnostics } from '../src/lib/epub/shadowParser.js';
+import { buildEpubRuntimeDiagnostics, sanitizeEpubRuntimeDiagnostics } from '../src/lib/epub/epubRuntime.js';
 
 class FakeFile { constructor(text){ this.text=text; } async async(){ return this.text; } }
 class FakeZip { constructor(files){ this.files=files; } file(path){ return this.files[path] == null ? null : new FakeFile(this.files[path]); } }
@@ -35,16 +35,16 @@ add(rt, {
   return { body, documentElement:body, querySelector(){return null;}, getElementsByTagName(){return [];} };
 }};
 try {
- const result=await buildEpubShadowDiagnostics({zip:new FakeZip({'OPS/Text/c1.xhtml':'x'}),opf,opfPath:'OPS/package.opf'});
+ const result=await buildEpubRuntimeDiagnostics({zip:new FakeZip({'OPS/Text/c1.xhtml':'x'}),opf,opfPath:'OPS/package.opf'});
  assert.equal(result.status,'complete');
  assert.equal(result.package.spineCount,1);
  assert.equal(result.coverCandidates[0].documentHref,'OPS/Images/cover.jpg');
  assert.equal(result.documents.processedCount,1);
  assert.equal(result.documents.textBlockCount,1);
- const serialized=JSON.stringify(sanitizeEpubShadowDiagnostics(result));
+ const serialized=JSON.stringify(sanitizeEpubRuntimeDiagnostics(result));
  assert.equal(serialized.includes('本文。'),false);
  assert.equal(serialized.includes('htmlText'),false);
 } finally { globalThis.DOMParser=original; }
-const failed=await buildEpubShadowDiagnostics({zip:null,opf:null,opfPath:''});
+const failed=await buildEpubRuntimeDiagnostics({zip:null,opf:null,opfPath:''});
 assert.equal(failed.status,'failed');
-console.log('Phase 13.2 EPUB shadow parser tests passed');
+console.log('Phase 13.2 EPUB runtime tests passed');

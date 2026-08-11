@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { buildEpubBookSectionModel } from '../src/lib/epub/bookSectionModel.js';
-import { buildQualifiedReaderModel, qualifyShadowRuntime } from '../src/lib/epub/qualifiedReaderModel.js';
+import { buildEpubReaderModel, qualifyEpubRuntime } from '../src/lib/epub/readerModel.js';
 const resource=(href,role=null)=>({canonicalHref:href,role});
 const names=['cover.xhtml','plate.xhtml','notice.xhtml','list.xhtml','intro.xhtml','chapter.xhtml'];
 const packageModel={manifest:new Map([['nav',resource('nav.xhtml','navigation')],['cover',resource('cover.jpg')]]),spine:names.map((href,spineIndex)=>({spineIndex,resource:resource(href)})),navigation:[{index:0,title:'Arbitrary navigation',sourceHref:'nav.xhtml',sourceType:'epub3-nav',target:{documentHref:'list.xhtml',fragmentId:null}},{index:1,title:'Named Section',sourceHref:'nav.xhtml',sourceType:'epub3-nav',target:{documentHref:'chapter.xhtml',fragmentId:null}}],guideReferences:[],coverCandidates:[{id:'cover',canonicalHref:'cover.jpg'}]};
@@ -12,10 +12,10 @@ assert.deepEqual(bookModel.sections.filter(s=>s.includedInReading!==false).map(s
 assert.equal(bookModel.sections.some(s=>s.type==='navigation'&&s.start.spineIndex===3),true);
 const imageModel={occurrences:[{documentHref:'cover.xhtml',eventIndex:0,candidateRole:'cover',confidence:'high'},{documentHref:'plate.xhtml',eventIndex:0,candidateRole:'front-matter-illustration',confidence:'high'},{documentHref:'chapter.xhtml',eventIndex:2,candidateRole:'inline-illustration',confidence:'high'}]};
 const runtime={packageModel,bookModel,imageModel,documents,diagnostics:{reconstructionFailureCount:0,documents:[]}};
-assert.equal(qualifyShadowRuntime(runtime).valid,true);
+assert.equal(qualifyEpubRuntime(runtime).valid,true);
 globalThis.URL={createObjectURL:blob=>`blob:${blob}`};
 const zip={file:href=>({async:async()=>href})};
-const model=await buildQualifiedReaderModel({runtime,zip});
+const model=await buildEpubReaderModel({runtime,zip});
 assert.deepEqual(model.chapters.map(x=>x.sectionRole),['book-cover','illustrations','front-matter','introduction','named-section']);
 assert.equal(model.flatItems.some(x=>x.plainText==='links'),false);
 assert.equal(model.flatItems.some(x=>x.plainText==='Named Section'),false);

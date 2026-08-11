@@ -152,12 +152,12 @@ function structuralNavigationProfile(document, documentHref, packageModel) {
 }
 function errorCode(error) {
   const name = String(error?.name || 'Error').replace(/[^A-Za-z0-9]+/g, '_').toUpperCase();
-  return `EPUB_SHADOW_${name || 'ERROR'}`;
+  return `EPUB_RUNTIME_${name || 'ERROR'}`;
 }
 function diagnosticView(packageModel, diagnostics, bookModel, imageModel, runtime) {
   const documents = diagnostics.documents || [];
   const view = {
-    schemaVersion: '13.6B', parserRole: 'authoritative', status: 'complete', package: packageModel.diagnostics,
+    schemaVersion: '13-closeout', parserRole: 'authoritative', status: 'complete', package: packageModel.diagnostics,
     bookModel: sanitizeEpubBookSectionModel(bookModel),
     imageModel: sanitizeEpubImageRoleModel(imageModel),
     navigationTargets: Object.freeze(packageModel.navigation.slice(0, 500).map(entry => ({
@@ -183,7 +183,7 @@ function diagnosticView(packageModel, diagnostics, bookModel, imageModel, runtim
   return Object.freeze(view);
 }
 
-export async function buildEpubShadowDiagnostics({ zip, opf, opfPath }) {
+export async function buildEpubRuntimeDiagnostics({ zip, opf, opfPath }) {
   try {
     const manifestItems = manifestInput(opf);
     const navigationEntries = await navigationInput(zip, opf, opfPath, manifestItems);
@@ -216,16 +216,16 @@ export async function buildEpubShadowDiagnostics({ zip, opf, opfPath }) {
     return diagnosticView(packageModel, diagnostics, bookModel, imageModel, runtime);
   } catch (error) {
     return Object.freeze({
-      schemaVersion: '13.5', status: 'failed', errorCode: errorCode(error),
+      schemaVersion: '13-closeout', parserRole: 'authoritative', status: 'failed', errorCode: errorCode(error),
       errorMessage: String(error?.message || error), package: null, navigationTargets: [],
       coverCandidates: [], documents: null, documentSummaries: [], reconstructionFailures: []
     });
   }
 }
 
-export function sanitizeEpubShadowDiagnostics(value) {
+export function sanitizeEpubRuntimeDiagnostics(value) {
   if (!value || typeof value !== 'object') return null;
   return JSON.parse(JSON.stringify(value));
 }
 
-export async function buildEpubAuthoritativeRuntime(input){const diagnostics=await buildEpubShadowDiagnostics(input);if(diagnostics?.status!=='complete'||!diagnostics.runtime)throw Object.assign(new Error(diagnostics?.errorMessage||'Authoritative EPUB reconstruction failed.'),{code:diagnostics?.errorCode||'EPUB_AUTHORITATIVE_RECONSTRUCTION_FAILED'});return Object.freeze({runtime:diagnostics.runtime,diagnostics});}
+export async function buildEpubRuntime(input){const diagnostics=await buildEpubRuntimeDiagnostics(input);if(diagnostics?.status!=='complete'||!diagnostics.runtime)throw Object.assign(new Error(diagnostics?.errorMessage||'Authoritative EPUB reconstruction failed.'),{code:diagnostics?.errorCode||'EPUB_RUNTIME_RECONSTRUCTION_FAILED'});return Object.freeze({runtime:diagnostics.runtime,diagnostics});}
