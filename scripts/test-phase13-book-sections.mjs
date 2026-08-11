@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import { buildEpubPackageModel } from '../src/lib/epub/packageModel.js';
+import { buildEpubBookSectionModel } from '../src/lib/epub/bookSectionModel.js';
+const pkg=buildEpubPackageModel({opfPath:'OPS/package.opf',metadata:{coverManifestId:'cover'},manifestItems:[{id:'ncx',href:'toc.ncx',mediaType:'application/x-dtbncx+xml'},{id:'cover',href:'Images/cover.jpg',mediaType:'image/jpeg'},{id:'toc',href:'Text/toc.xhtml',mediaType:'application/xhtml+xml'},{id:'book',href:'Text/book.xhtml',mediaType:'application/xhtml+xml'}],spineItems:[{idref:'toc'},{idref:'book'}],guideReferences:[{type:'toc',href:'Text/toc.xhtml'},{type:'cover',href:'Text/toc.xhtml'}],navigationEntries:[{title:'Contents',href:'Text/toc.xhtml',sourceHref:'OPS/toc.ncx',sourceType:'epub2-ncx'},{title:'One',href:'Text/book.xhtml#wrapper',sourceHref:'OPS/toc.ncx',sourceType:'epub2-ncx'},{title:'Two',href:'Text/book.xhtml#empty',sourceHref:'OPS/toc.ncx',sourceType:'epub2-ncx'}]});
+assert.equal(pkg.coverCandidates[0].id,'cover'); assert.equal(pkg.guideReferences[0].documentHref,'OPS/Text/toc.xhtml');
+const documents=[{documentHref:'OPS/Text/toc.xhtml',spineIndex:0,events:[{type:'image',eventIndex:0,imageHref:'OPS/Images/cover.jpg',ancestorIds:[]}]},{documentHref:'OPS/Text/book.xhtml',spineIndex:1,events:[{type:'heading',eventIndex:0,elementId:null,ancestorIds:['wrapper']},{type:'text-block',eventIndex:1,elementId:null,ancestorIds:[]},{type:'heading',eventIndex:2,elementId:null,ancestorIds:['empty']},{type:'text-block',eventIndex:3,ancestorIds:[]}]}];
+const model=buildEpubBookSectionModel({packageModel:pkg,documents});
+assert.equal(model.sections.filter(x=>x.type==='chapter').length,2);
+assert.equal(model.sections.some(x=>x.type==='chapter'&&x.start.documentHref==='OPS/Text/toc.xhtml'),false);
+assert.equal(model.sections.some(x=>x.type==='navigation'&&!x.includedInReading),true);
+assert.equal(model.rejectedNavigationTargets[0].reason,'target-document-excluded');
+assert.equal(model.sections.filter(x=>x.type==='chapter')[0].start.resolutionReason,'fragment-ancestor-id');
+assert.equal(model.sections.filter(x=>x.type==='chapter')[1].start.eventIndex,2);
+assert.equal(model.excludedResources.find(x=>x.documentHref==='OPS/toc.ncx').reasons.length,1);
+assert.equal(JSON.stringify(model).includes('Contents'),false);
+console.log('Phase 13.4A EPUB book-section correction tests passed');

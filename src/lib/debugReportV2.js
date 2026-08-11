@@ -135,7 +135,9 @@ export function buildDebugReportV2({
         currentSource: clone(scene?.parserDebug || null)
       },
       currentSource: clone(scene),
-      fullInventory: includeFullParserInventory ? clone(book?.debug || null) : null
+      fullInventory: includeFullParserInventory ? clone(book?.debug || null) : null,
+      authoritativeParser: clone(book?.epubRuntimeDiagnostics || null),
+      readerModelQualification: clone(book?.readerModelQualification || null)
     }
   };
   return report;
