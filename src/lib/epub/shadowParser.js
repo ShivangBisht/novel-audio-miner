@@ -157,7 +157,7 @@ function errorCode(error) {
 function diagnosticView(packageModel, diagnostics, bookModel, imageModel, runtime) {
   const documents = diagnostics.documents || [];
   const view = {
-    schemaVersion: '13.5', status: 'complete', package: packageModel.diagnostics,
+    schemaVersion: '13.6B', parserRole: 'authoritative', status: 'complete', package: packageModel.diagnostics,
     bookModel: sanitizeEpubBookSectionModel(bookModel),
     imageModel: sanitizeEpubImageRoleModel(imageModel),
     navigationTargets: Object.freeze(packageModel.navigation.slice(0, 500).map(entry => ({
@@ -227,3 +227,5 @@ export function sanitizeEpubShadowDiagnostics(value) {
   if (!value || typeof value !== 'object') return null;
   return JSON.parse(JSON.stringify(value));
 }
+
+export async function buildEpubAuthoritativeRuntime(input){const diagnostics=await buildEpubShadowDiagnostics(input);if(diagnostics?.status!=='complete'||!diagnostics.runtime)throw Object.assign(new Error(diagnostics?.errorMessage||'Authoritative EPUB reconstruction failed.'),{code:diagnostics?.errorCode||'EPUB_AUTHORITATIVE_RECONSTRUCTION_FAILED'});return Object.freeze({runtime:diagnostics.runtime,diagnostics});}

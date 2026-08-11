@@ -7,7 +7,7 @@ const sections=[
 {sectionIndex:3,type:'chapter',navigationIndex:0,start:{spineIndex:3,eventIndex:0},end:{spineIndex:6,eventIndex:30}},
 {sectionIndex:4,type:'chapter',navigationIndex:1,start:{spineIndex:7,eventIndex:0},end:{spineIndex:7,eventIndex:2}},
 {sectionIndex:5,type:'chapter',navigationIndex:2,start:{spineIndex:8,eventIndex:0},end:{spineIndex:8,eventIndex:2}},
-{sectionIndex:6,type:'auxiliary-front-matter',start:{spineIndex:9,eventIndex:0},end:{spineIndex:9,eventIndex:2}},
+{sectionIndex:6,type:'auxiliary-front-matter',start:{spineIndex:9,eventIndex:0},end:{spineIndex:9,eventIndex:3}},
 {sectionIndex:7,type:'back-matter',start:{spineIndex:10,eventIndex:0},end:{spineIndex:12,eventIndex:2}}];
 const bookModel={cover:{chosen:{documentHref:'cover.xhtml',eventIndex:0}},sections};
 const between=(href,spine,image)=>({documentHref:href,spineIndex:spine,events:[{type:'text-block',eventIndex:0},{type:'image',eventIndex:1,imageHref:image,alt:'scene divider'},{type:'text-block',eventIndex:2}]});
@@ -23,7 +23,12 @@ const documents=[
 between('sep1.xhtml',6,'separator.png'),between('sep2.xhtml',7,'separator.png'),between('sep3.xhtml',8,'separator.png'),
 {documentHref:'chapter2.xhtml',spineIndex:7,events:[{type:'image',eventIndex:0,imageHref:'opening.jpg'},{type:'text-block',eventIndex:1},{type:'image',eventIndex:2,imageHref:'repeat-twice.png'}]},
 {documentHref:'chapter3.xhtml',spineIndex:8,events:[{type:'text-block',eventIndex:0},{type:'image',eventIndex:1,imageHref:'repeat-twice.png'},{type:'text-block',eventIndex:2}]},
-{documentHref:'credits.xhtml',spineIndex:9,events:[{type:'text-block',eventIndex:0},{type:'text-block',eventIndex:1},{type:'image',eventIndex:2,imageHref:'tm.gif',alt:''}]},
+{documentHref:'credits.xhtml',spineIndex:9,events:[
+ {type:'text-block',eventIndex:0,plainText:'Book title'},
+ {type:'text-block',eventIndex:1,plainText:'Subtitle'},
+ {type:'text-block',eventIndex:2,plainText:'Author name'},
+ {type:'image',eventIndex:3,imageHref:'tm.gif',alt:''}
+]},
 terminal('back1.xhtml',10),terminal('back2.xhtml',11),terminal('back3.xhtml',12)];
 const model=buildEpubImageRoleModel({packageModel:{},documents,bookModel});
 const occurrences=href=>model.occurrences.filter(x=>x.resourceHref===href);const role=href=>occurrences(href)[0].candidateRole;
@@ -32,5 +37,18 @@ assert.equal(role('separator.png'),'ornament');assert.equal(occurrences('separat
 assert.equal(role('unique-separator.jpg'),'ornament');assert.ok(occurrences('unique-separator.jpg')[0].evidence.includes('unique-between-substantive-text'));
 assert.equal(role('normal-inline.jpg'),'inline-illustration');assert.equal(role('short-alt-inline.jpg'),'ornament');
 assert.notEqual(role('repeat-twice.png'),'ornament');assert.equal(role('tm.gif'),'publisher-mark');assert.equal(occurrences('tm.gif')[0].sectionType,'auxiliary-front-matter');assert.equal(role('publisher.png'),'publisher-mark');
+assert.equal(
+ occurrences('tm.gif')[0].documentTextEventCount,
+ 3
+);
+assert.equal(
+ occurrences('tm.gif')[0].documentTextLength,
+ 29
+);
+assert.ok(
+ occurrences('tm.gif')[0].evidence.includes(
+  'auxiliary-section'
+ )
+);
 assert.equal(model.resources.find(x=>x.resourceHref==='unique-separator.jpg').candidateRole,'ornament');assert.equal(model.resources.find(x=>x.resourceHref==='tm.gif').candidateRole,'publisher-mark');assert.equal(JSON.stringify(model).includes('plainText'),false);assert.equal(JSON.stringify(model).includes('scene divider'),false);
 console.log('Phase 13.6A image-role closeout tests passed');

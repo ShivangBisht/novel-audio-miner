@@ -16,5 +16,28 @@ assert.equal(active.flatItems.some(x=>x.plainText==='Arbitrary navigation label'
 assert.equal(active.flatItems.some(x=>x.plainText==='Chapter One'),false);
 assert.deepEqual(active.flatItems.filter(x=>x.type==='sentence').map(x=>x.plainText),['第一文。','第二文。','第三文。']);
 const cover=active.flatItems.find(x=>x.parserDebug?.imageRole==='cover');const image=active.flatItems.find(x=>x.parserDebug?.imageRole==='inline-illustration');assert.ok(cover);assert.ok(image);assert.equal(active.chapterImageLists[0][0],cover);assert.equal(active.chapterImageLists[1][0],image);assert.equal(image.sceneIndex,active.flatItems.indexOf(image));assert.equal(active.activation.comparison.consumedHeadingCount,1);assert.equal(active.activation.comparison.unassignedVisibleItemCount,0);
-const broken={...runtime,diagnostics:{reconstructionFailureCount:1,documents:[]}};const fallback=await activateReaderModel({mode:'qualified-shadow',legacy,runtime:broken,zip});assert.equal(fallback.activation.fallbackReason,'reconstruction-failure');
+const broken={
+ ...runtime,
+ diagnostics:{
+  reconstructionFailureCount:1,
+  unsafeReconstructionFailureCount:1,
+  documents:[{
+   documentHref:'broken.xhtml',
+   spineIndex:2,
+   reconstructed:false,
+   exactNormalizedMatch:false,
+   compactEquivalent:false,
+   reconstructionQualification:'failed',
+   expectedLength:10,
+   extractedLength:8,
+   compactExpectedLength:10,
+   compactExtractedLength:8,
+   lengthDelta:-2,
+   textNodeCount:2,
+   ownedTextNodeCount:1,
+   unownedTextNodeCount:1,
+   duplicateTextNodeCount:0
+  }]
+ }
+};const fallback=await activateReaderModel({mode:'qualified-shadow',legacy,runtime:broken,zip});assert.equal(fallback.activation.fallbackReason,'reconstruction-failure');
 console.log('Phase 13.6A structural Reader activation tests passed');

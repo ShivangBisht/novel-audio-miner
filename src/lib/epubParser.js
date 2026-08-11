@@ -1,97 +1,28 @@
 import JSZip from 'jszip';
 import { splitJapaneseSentences } from './japaneseSentenceSplitter.js';
-import { buildEpubShadowDiagnostics } from './epub/shadowParser.js';
-import { activateReaderModel } from './epub/readerModelActivation.js';
+import { buildEpubAuthoritativeRuntime } from './epub/shadowParser.js';
+import { buildQualifiedReaderModel } from './epub/qualifiedReaderModel.js';
 
 export async function parseEpubFile(file) {
-  const zip = await JSZip.loadAsync(await file.arrayBuffer());
-  const container = parseXml(await readZipText(zip, 'META-INF/container.xml'));
-  const opfPath = container.querySelector('rootfile')?.getAttribute('full-path');
-  if (!opfPath) throw new Error('Could not find OPF package file.');
-  const opf = parseXml(await readZipText(zip, opfPath));
-  const opfDir = dirname(opfPath);
-  const manifest = readManifest(opf, opfDir);
-  const spine = readSpine(opf, manifest);
-  const toc = await readToc(zip, opf, manifest);
-  const meta = readMetadata(opf, file.name);
-  const epubShadowParser = await buildEpubShadowDiagnostics({ zip, opf, opfPath });
-
-  const rawPages = [];
-  for (const item of spine) {
-    if (!item?.href || !isHtmlLike(item) || item.properties?.includes('nav')) continue;
-    try {
-      const html = await readZipText(zip, item.href);
-      const page = extractPageWithOrdering(html, item.href, rawPages.length);
-      rawPages.push(page);
-    } catch (err) { console.warn('[Parser] Skipping spine item:', item.href, err); }
-  }
-
-  await fillImageDataUris(rawPages, zip);
-
-  const chapters = buildSectionsFromToc(rawPages, toc);
-  const pageChapterMap = new Map();
-  chapters.forEach((chapter, ci) => {
-    chapter.sourceHrefs.forEach(href => pageChapterMap.set(href, ci));
-  });
-
-  const flatItems = [];
-  const chapterImageLists = {};
-  chapters.forEach((_, ci) => chapterImageLists[ci] = []);
-
-  rawPages.forEach(page => {
-    if (looksLikeContentsPage(page, toc)) return;
-    const chapterIdx = pageChapterMap.get(page.href) ?? -1;
-    const chapter = chapterIdx >= 0 ? chapters[chapterIdx] : null;
-    const chapterTitle = chapter?.title || '';
-
-    for (const oi of (page.orderedItems || [])) {
-      if (oi.type === 'image') {
-        if (!oi.dataUri) continue;
-        const imgEntry = { type: 'image', dataUri: oi.dataUri, alt: oi.alt || '', chapterIndex: chapterIdx, chapterTitle, parserDebug: { ...(oi.parserDebug || {}), chapterIndex: chapterIdx, chapterTitle } };
-        flatItems.push(imgEntry);
-        if (chapterIdx >= 0) chapterImageLists[chapterIdx].push(imgEntry);
-      } else {
-        flatItems.push({
-          type: 'sentence',
-          plainText: oi.plainText || '',
-          htmlText: oi.htmlText || '',
-          chapterIndex: chapterIdx,
-          chapterTitle,
-          parserDebug: { ...(oi.parserDebug || {}), chapterIndex: chapterIdx, chapterTitle }
-        });
-      }
-    }
-  });
-
-  const legacyResult = {
-    id: await quickHash(`${file.name}:${file.size}:${file.lastModified}`),
-    fileName: file.name,
-    title: meta.title || file.name.replace(/\.epub$/i, ''),
-    author: meta.creator || '',
-    toc,
-    chapters,
-    flatItems,
-    chapterImageLists,
-    epubShadowParser,
-    debug: {
-      tocCount: toc.length,
-      totalItems: flatItems.length,
-      sentenceCount: flatItems.filter(i => i.type === 'sentence').length,
-      imageCount: flatItems.filter(i => i.type === 'image').length,
-      chapterList: chapters.map((c, i) => ({
-        title: c.title,
-        sentenceCount: c.sentences.length,
-        imageCount: (chapterImageLists[i] || []).length,
-        preview: (c.plainText || '').slice(0, 80)
-      })),
-      pageList: rawPages.map(page => ({ href: page.href, title: page.title, orderedItemCount: (page.orderedItems || []).length, sentenceCount: (page.sentences || []).length, imageCount: (page.images || []).length }))
-    }
+  const zip=await JSZip.loadAsync(await file.arrayBuffer());
+  const container=parseXml(await readZipText(zip,'META-INF/container.xml'));
+  const opfPath=container.querySelector('rootfile')?.getAttribute('full-path');
+  if(!opfPath)throw new Error('Could not find OPF package file.');
+  const opf=parseXml(await readZipText(zip,opfPath));
+  const {runtime,diagnostics}=await buildEpubAuthoritativeRuntime({zip,opf,opfPath});
+  const reader=await buildQualifiedReaderModel({runtime,zip});
+  const metadata=runtime.packageModel.metadata||{};
+  const id=await quickHash(`${file.name}:${file.size}:${file.lastModified}`);
+  const toc=runtime.packageModel.navigation.map(entry=>({index:entry.index,title:entry.title,href:entry.target.documentHref,fragmentId:entry.target.fragmentId,depth:entry.depth,sourceType:entry.sourceType}));
+  const result={
+    id,fileName:file.name,title:metadata.title||file.name.replace(/\.epub$/i,''),author:metadata.creator||'',toc,
+    chapters:reader.chapters,flatItems:reader.flatItems,chapterImageLists:reader.chapterImageLists,
+    epubShadowParser:diagnostics,epubAuthoritativeParser:diagnostics,
+    readerModelActivation:{requestedMode:'authoritative',source:'authoritative',activated:true,gate:{valid:true,reason:null},comparison:reader.diagnostics},
+    debug:{tocCount:toc.length,totalItems:reader.flatItems.length,sentenceCount:reader.diagnostics.sentenceCount,imageCount:reader.diagnostics.imageCount,chapterList:reader.chapters.map((chapter,index)=>({title:chapter.title,sentenceCount:chapter.sentences.length,imageCount:(reader.chapterImageLists[index]||[]).length,preview:(chapter.plainText||'').slice(0,80)})),authoritative:true,legacyParserExecuted:false,readerDiagnostics:reader.diagnostics}
   };
-  const mode = import.meta.env.VITE_EPUB_READER_MODEL_MODE || 'legacy';
-  const activated = await activateReaderModel({ mode, legacy: legacyResult, runtime: epubShadowParser.runtime, zip });
-  return { ...activated, readerModelActivation: activated.activation };
+  return result;
 }
-
 // ─── Rest of the file unchanged (extractPageWithOrdering, fillImageDataUris, helpers) ───
 
 function extractPageWithOrdering(html, href, i) {
