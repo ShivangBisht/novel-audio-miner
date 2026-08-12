@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { buildEpubBookSectionModel } from '../src/lib/epub/bookSectionModel.js';
 import { buildEpubReaderModel, qualifyEpubRuntime } from '../src/lib/epub/readerModel.js';
 const packageModel={manifest:new Map(),guideReferences:[],coverCandidates:[{id:'cover',canonicalHref:'cover.jpg'}],spine:[0,1,2].map(spineIndex=>({spineIndex,resource:{canonicalHref:['cover.xhtml','list.xhtml','chapter.xhtml'][spineIndex]}})),navigation:[{index:0,title:'Arbitrary label',target:{documentHref:'list.xhtml',fragmentId:null}},{index:1,title:'Chapter One',target:{documentHref:'chapter.xhtml',fragmentId:null}}]};
-const documents=[{documentHref:'cover.xhtml',spineIndex:0,navigationProfile:{isNavigationList:false},events:[{type:'image',eventIndex:0,imageHref:'cover.jpg',alt:''}]},{documentHref:'list.xhtml',spineIndex:1,navigationProfile:{isNavigationList:true},events:[{type:'text-block',eventIndex:0,plainText:'Arbitrary navigation label'}]},{documentHref:'chapter.xhtml',spineIndex:2,navigationProfile:{isNavigationList:false},events:[{type:'text-block',eventIndex:0,plainText:'Chapter One'},{type:'text-block',eventIndex:1,plainText:'第一文。第二文。'},{type:'image',eventIndex:2,imageHref:'inline.jpg',alt:''},{type:'text-block',eventIndex:3,plainText:'第三文。'}]}];
+const documents=[{documentHref:'cover.xhtml',spineIndex:0,navigationProfile:{isNavigationList:false},events:[{type:'image',eventIndex:0,imageHref:'cover.jpg',alt:''}]},{documentHref:'list.xhtml',spineIndex:1,navigationProfile:{isNavigationList:true},events:[{type:'text-block',eventIndex:0,plainText:'Arbitrary navigation label'}]},{documentHref:'chapter.xhtml',spineIndex:2,navigationProfile:{isNavigationList:false},events:[{type:'text-block',eventIndex:0,plainText:'Chapter One'},{type:'text-block',eventIndex:1,plainText:'第一文。\n第二文。'},{type:'image',eventIndex:2,imageHref:'inline.jpg',alt:''},{type:'text-block',eventIndex:3,plainText:'第三文。'}]}];
 const bookModel=buildEpubBookSectionModel({packageModel,documents});
 const runtime={packageModel,documents,bookModel:{...bookModel,cover:{chosen:{documentHref:'cover.xhtml',eventIndex:0}}},imageModel:{occurrences:[{documentHref:'cover.xhtml',eventIndex:0,candidateRole:'cover',confidence:'high'},{documentHref:'chapter.xhtml',eventIndex:2,candidateRole:'inline-illustration',confidence:'high'}]},diagnostics:{reconstructionFailureCount:0,documents:documents.map(()=>({unownedTextNodeCount:0,duplicateTextNodeCount:0}))}};
 const zip={file:href=>({async:async()=>new Blob([href])})};
@@ -12,7 +12,21 @@ const active=await buildEpubReaderModel({runtime,zip});
 assert.deepEqual(active.chapters.map(x=>x.sectionRole),['book-cover','named-section']);
 assert.equal(active.flatItems.some(x=>x.plainText==='Arbitrary navigation label'),false);
 assert.equal(active.flatItems.some(x=>x.plainText==='Chapter One'),false);
-assert.deepEqual(active.flatItems.filter(x=>x.type==='sentence').map(x=>x.plainText),['第一文。','第二文。','第三文。']);
+assert.deepEqual(active.flatItems.filter(x=>x.type==='sentence').map(x=>x.plainText),['第一文。\n第二文。','第三文。']);assert.equal(
+ active.diagnostics.contextualActivation.activated,
+ true,
+ JSON.stringify(
+  active.diagnostics.contextualActivation
+ )
+);
+assert.equal(
+ active.diagnostics.contextualActivation.fallbackReason,
+ null
+);
+assert.deepEqual(
+ active.diagnostics.contextualActivation.errors,
+ []
+);
 const cover=active.flatItems.find(x=>x.parserDebug?.imageRole==='cover');
 const image=active.flatItems.find(x=>x.parserDebug?.imageRole==='inline-illustration');
 assert.ok(cover);assert.ok(image);
