@@ -46,7 +46,8 @@
     "test:phase13": "npm run test:phase13.6b && node scripts/test-phase13-closeout.mjs",
     "test:phase14.1": "npm run test:phase13 && node scripts/test-phase14-text-ranges.mjs",
     "test:phase14.2": "npm run test:phase14.1 && node scripts/test-phase14-minimum-context.mjs",
-    "test:phase14.3": "npm run test:phase14.2 && node scripts/test-phase14-markup-ranges.mjs"
+    "test:phase14.3": "npm run test:phase14.2 && node scripts/test-phase14-markup-ranges.mjs",
+    "test:phase14.4": "npm run test:phase14.3 && node scripts/test-phase14-contextual-diagnostics.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.3",
