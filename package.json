@@ -51,7 +51,8 @@
     "test:phase14.5": "npm run test:phase14.4 && node scripts/test-phase14-contextual-activation.mjs && npm run test:reader-prefetch-integration && npm run test:reader-spans",
     "test:phase14.5a-step1": "npm run test:phase14.5 && node scripts/test-phase14-logical-sentence-ownership.mjs",
     "test:phase14.5a-step2": "npm run test:phase14.5a-step1 && node scripts/test-phase14-logical-sentence-selection.mjs",
-    "test:phase14.5a-step3": "npm run test:phase14.5a-step2 && node scripts/test-phase14-dom-visual-selection.mjs"
+    "test:phase14.5a-step3": "npm run test:phase14.5a-step2 && node scripts/test-phase14-dom-visual-selection.mjs",
+    "test:phase14.5a-step4": "npm run test:phase14.5a-step3 && node scripts/test-phase14-sentence-local-analysis.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.3",
