@@ -69,6 +69,60 @@ function combineContextualSceneMarkup(candidates){
  });
 }
 
+function buildLogicalSentences(candidates){
+ const source=Array.isArray(candidates)
+  ? candidates.filter(Boolean)
+  : [];
+ const logicalSentences=[];
+ let visualOffset=0;
+ let previousBlockKey=null;
+ for(const [index,candidate] of source.entries()){
+  const currentBlockKey=
+   contextualSourceBlockKey(candidate);
+  const crossesSourceBlock=Boolean(
+   previousBlockKey&&
+   currentBlockKey&&
+   currentBlockKey!==previousBlockKey
+  );
+  if(crossesSourceBlock){
+   visualOffset+=1;
+  }
+  const plainText=String(candidate?.plainText??'');
+  const htmlText=String(
+   candidate?.htmlText??candidate?.plainText??''
+  );
+  const visualStart=visualOffset;
+  const visualEnd=visualStart+plainText.length;
+  logicalSentences.push(Object.freeze({
+   index,
+   plainText,
+   htmlText,
+   visualStart,
+   visualEnd,
+   meaningfulLength:
+    Number.isInteger(candidate?.meaningfulLength)
+     ? candidate.meaningfulLength
+     : null,
+   atomicReason:candidate?.atomicReason??null,
+   sourceBlockId:currentBlockKey||null,
+   sourceEventKey:candidate?.sourceEventKey??null,
+   sourceDocumentHref:
+    candidate?.sourceDocumentHref??null,
+   sourceSpineIndex:
+    candidate?.sourceSpineIndex??null,
+   sourceEventIndex:
+    candidate?.sourceEventIndex??null,
+   sourceRangeIndex:
+    candidate?.sourceRangeIndex??null,
+   hasRuby:Boolean(candidate?.hasRuby)
+  }));
+  visualOffset=visualEnd;
+  if(currentBlockKey){
+   previousBlockKey=currentBlockKey;
+  }
+ }
+ return Object.freeze(logicalSentences);
+}
 function normalizeHeadingText(value){
  return String(value||'')
   .normalize('NFKC')
@@ -175,6 +229,7 @@ export function buildContextualSceneStream({runtime,minimumMeaningfulLength=8}={
   if(!plan.diagnostics.valid){errors.push(`planner-invalid:${reason}`);run=[];activeGroup=null;return;}
   for(const planned of plan.scenes){
    const combined=combineContextualSceneMarkup(planned.sourceCandidates);
+     const logicalSentences=buildLogicalSentences(planned.sourceCandidates);
    const first=planned.sourceCandidates[0],last=planned.sourceCandidates.at(-1);
    const sourceCandidateText=
     planned.sourceCandidates
@@ -195,7 +250,7 @@ export function buildContextualSceneStream({runtime,minimumMeaningfulLength=8}={
     continue;
    }
    const keys=[...new Set(planned.sourceCandidates.map(c=>c.sourceEventKey))];keys.forEach(key=>consumedEventKeys.add(key));
-   scenes.push(Object.freeze({plainText:combined.plainText,htmlText:combined.htmlText,hasRuby:planned.sourceCandidates.some(c=>c.hasRuby),sectionIndex:first.sectionIndex,sectionType:first.sectionType,firstDocumentHref:first.sourceDocumentHref,firstSpineIndex:first.sourceSpineIndex,firstEventIndex:first.sourceEventIndex,lastDocumentHref:last.sourceDocumentHref,lastSpineIndex:last.sourceSpineIndex,lastEventIndex:last.sourceEventIndex,sourceEventKeys:Object.freeze(keys),sourceCandidateCount:planned.sourceCandidates.length,sourceBlockBoundaryCount:combined.sourceBlockBoundaryCount,meaningfulLength:planned.meaningfulLength,attachmentDirection:planned.attachmentDirection,attachmentCount:planned.attachmentCount,planningReason:planned.planningReason,boundaryAfter:reason}));
+   scenes.push(Object.freeze({plainText:combined.plainText,htmlText:combined.htmlText,hasRuby:planned.sourceCandidates.some(c=>c.hasRuby),sectionIndex:first.sectionIndex,sectionType:first.sectionType,firstDocumentHref:first.sourceDocumentHref,firstSpineIndex:first.sourceSpineIndex,firstEventIndex:first.sourceEventIndex,lastDocumentHref:last.sourceDocumentHref,lastSpineIndex:last.sourceSpineIndex,lastEventIndex:last.sourceEventIndex,sourceEventKeys:Object.freeze(keys),logicalSentences,sourceCandidateCount:planned.sourceCandidates.length,sourceBlockBoundaryCount:combined.sourceBlockBoundaryCount,meaningfulLength:planned.meaningfulLength,attachmentDirection:planned.attachmentDirection,attachmentCount:planned.attachmentCount,planningReason:planned.planningReason,boundaryAfter:reason}));
   }
   run=[];activeGroup=null;
  }
