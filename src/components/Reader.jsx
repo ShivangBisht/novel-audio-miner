@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import DictionaryManagementPanel from './DictionaryManagementPanel.jsx';
 import TeachingPanel from './TeachingPanel.jsx';
+import { ReaderShell, ReaderStatusBar, ReaderTopBar, ReaderMainLayout, ReaderSidebar, ReaderViewport } from './reader/ReaderShell.jsx';
 import { resolveTeachingSelection, teachingSelectionMessage } from '../lib/teachingSelectionResolver.js';
 import { getProgress, saveProgress } from '../lib/storage.js';
 import { checkAnkiConnect, findLatestNote, updateNoteFields, ankiRequest } from '../lib/ankiConnect.js';
@@ -932,8 +933,8 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
 
 
   return (
-    <>
-      <div className="status-bar">
+    <ReaderShell>
+      <ReaderStatusBar>
         <div className="status-left">
           <span className={`status-dot ${ankiStatus.connected ? 'ok' : 'error'}`} />
           <span>Anki {ankiStatus.connected ? 'Connected' : 'Offline'}</span>
@@ -957,20 +958,20 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
           <span>·</span>
           <span>{cleanedTitle}</span>
         </div>
-      </div>
+      </ReaderStatusBar>
 
-      <div className="topbar">
+      <ReaderTopBar>
         <div style={{ display: 'flex', alignItems: 'baseline' }}>
           <h1>{cleanedTitle}</h1>
           <span className="version">v4.1</span>
         </div>
         <button className="secondary" onClick={onLoadAnotherBook}>Load another book</button>
-      </div>
+      </ReaderTopBar>
 
-      <div className="main-layout">
+      <ReaderMainLayout>
         <div className="sidebar-toggle" onClick={() => setSidebarOpen(v => !v)} title="Toggle sidebar (S)">{sidebarOpen ? '✕' : '☰'}</div>
 
-        <aside className={`sidebar ${sidebarOpen ? '' : 'collapsed'}`}>
+        <ReaderSidebar open={sidebarOpen}>
           <h2>{cleanedTitle}</h2>
           <p className="book-author">{book.author || 'Unknown author'}</p>
           <div style={{ display: 'flex', gap: '10px', fontSize: '12px', color: 'var(--muted)' }}>
@@ -1101,11 +1102,11 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
               </div>
             </div>
           )}
-        </aside>
+        </ReaderSidebar>
 
 
 
-        <div className="reader-area">
+        <ReaderViewport>
           <div className="nav-header">
             <span className="chapter-info">
               {currentData?.chapterTitle || ''}
@@ -1197,8 +1198,8 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
               </div>
             </div>
           )}
-        </div>
-      </div>
-    </>
+        </ReaderViewport>
+      </ReaderMainLayout>
+    </ReaderShell>
   );
 }
