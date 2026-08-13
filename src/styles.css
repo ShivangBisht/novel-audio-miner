@@ -653,3 +653,82 @@ button:focus-visible, .sidebar-toggle:focus-visible { outline: 2px solid var(--a
   .reader-progress-track span, .sidebar, .image-panel img { transition: none !important; }
 }
 /* PHASE15_3_READING_INTERFACE_END */
+/* PHASE15_4_SIDEBAR_INFORMATION_ARCHITECTURE_BEGIN */
+.sidebar {
+  width: 304px;
+  padding: 14px;
+  gap: 10px;
+  background: var(--reader-surface);
+  border-color: var(--reader-border);
+}
+.sidebar.collapsed { margin-left: -304px; }
+.reader-sidebar-section {
+  display: grid;
+  gap: 10px;
+  padding: 13px;
+  background: rgba(255,255,255,.018);
+  border: 1px solid var(--reader-border);
+  border-radius: var(--reader-radius-md);
+}
+.reader-sidebar-section-title {
+  color: var(--reader-muted);
+  font-size: 10px;
+  font-weight: 760;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+.reader-sidebar-book h2 { font-size: 15px; line-height: 1.35; }
+.reader-sidebar-book .book-author { margin: -4px 0 0; }
+.reader-sidebar-metrics { display: flex; gap: 12px; color: var(--reader-muted); font-size: 11px; }
+.reader-sidebar-metrics strong { color: var(--reader-text); font-variant-numeric: tabular-nums; }
+.reader-sidebar-progress { display: grid; gap: 6px; }
+.reader-sidebar-progress-copy { display: flex; justify-content: space-between; gap: 8px; color: var(--reader-muted); font-size: 11px; }
+.reader-sidebar-progress-copy strong { color: var(--reader-text); }
+.reader-sidebar-progress-track { height: 3px; overflow: hidden; border-radius: 999px; background: rgba(148,163,184,.13); }
+.reader-sidebar-progress-track span { display: block; height: 100%; background: var(--accent); border-radius: inherit; }
+.reader-sidebar-empty { color: var(--reader-muted); font-size: 11px; line-height: 1.45; }
+.reader-sidebar-word-list { display: flex; flex-wrap: wrap; gap: 4px; }
+.reader-sidebar-display-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.reader-sidebar-display-actions button { min-height: 36px; padding: 7px 8px; font-size: 11px; }
+.reader-sidebar-display-actions .teaching-toggle { grid-column: 1 / -1; }
+.reader-sidebar-style summary { color: var(--reader-muted); cursor: pointer; font-size: 11px; }
+.reader-tools-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 180;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(3,7,12,.64);
+  backdrop-filter: blur(5px);
+}
+.reader-tools-panel {
+  width: min(560px, 94vw);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--reader-surface);
+  border-left: 1px solid var(--reader-border-strong);
+  box-shadow: -22px 0 60px rgba(0,0,0,.45);
+}
+.reader-tools-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px; border-bottom: 1px solid var(--reader-border); }
+.reader-tools-header > div { display: grid; gap: 4px; }
+.reader-tools-header span { color: var(--reader-muted); font-size: 10px; font-weight: 760; letter-spacing: .11em; text-transform: uppercase; }
+.reader-tools-header h2 { font-size: 19px; }
+.reader-tools-content { min-height: 0; overflow: auto; display: grid; align-content: start; gap: 12px; padding: 16px; }
+.reader-tools-content > details, .reader-tools-content > .debug-panel { padding: 13px; border: 1px solid var(--reader-border); border-radius: var(--reader-radius-md); background: #0c1117; }
+.reader-tools-content > details > summary { cursor: pointer; color: var(--reader-text); font-weight: 650; }
+.reader-tools-content > details[open] > summary { margin-bottom: 10px; }
+.reader-tools-button { min-height: 38px; white-space: nowrap; }
+.reader-header-actions { display: flex; align-items: center; gap: 8px; }
+@media (max-width: 768px) {
+  .sidebar { width: min(360px, 100%); }
+  .sidebar.collapsed { margin-left: -100%; }
+  .reader-tools-panel { width: 100%; }
+  .reader-tools-layer { position: fixed; }
+}
+@media (max-width: 700px) {
+  .reader-header-actions { grid-column: 2; grid-row: 1; }
+  .reader-header-actions .reader-book-action { display: none; }
+  .reader-tools-button { padding-inline: 11px; }
+}
+/* PHASE15_4_SIDEBAR_INFORMATION_ARCHITECTURE_END */

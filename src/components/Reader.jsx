@@ -349,6 +349,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
 
   const [sidebarOpen, setSidebarOpen] = useState(() => saved.sidebarOpen ?? true);
   const [showStyle, setShowStyle] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const [ankiStatus, setAnkiStatus] = useState({ connected: false, message: 'Not checked' });
   const [cacheVersion, setCacheVersion] = useState(0);
   const [globalFreqReady, setGlobalFreqReady] = useState(false);
@@ -755,6 +756,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
       setStatus({ type: 'error', message: `${target} was not found in manual known words. It may be known from Anki.` });
     }
   }
+  function handleToggleTeachingMode() { setTeachingMode(value => !value); setTeachingSelection(null); }
   function updateStyle(patch) { setReaderStyle(s => ({ ...s, ...patch })); }
   function stepStyle(key, delta, min, max) { setReaderStyle(s => ({ ...s, [key]: clamp(Number(s[key]) + delta, min, max) })); }
   function resetStyle() { setReaderStyle(DEFAULT_STYLE); setVerticalMode(true); }
@@ -970,142 +972,83 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
         sceneCount={totalScenes}
         sceneType={isImage ? 'illustration' : 'text'}
         onLoadAnotherBook={onLoadAnotherBook}
+        onOpenTools={() => setToolsOpen(true)}
       />
 
       <ReaderMainLayout>
         <ReaderSidebarToggle open={sidebarOpen} onToggle={() => setSidebarOpen(value => !value)} />
 
         <ReaderSidebar open={sidebarOpen}>
-          <h2>{cleanedTitle}</h2>
-          <p className="book-author">{book.author || 'Unknown author'}</p>
-          <div style={{ display: 'flex', gap: '10px', fontSize: '12px', color: 'var(--muted)' }}>
-            <span><strong>{book.chapters.length}</strong> chapters</span>
-            <span><strong>{totalScenes}</strong> scenes</span>
-          </div>
-          <div>
-            <label className="section-label">Jump to chapter</label>
-            <select className="chapter-select" value={currentChapterIdx} onChange={e => jumpToChapter(e.target.value)}>
-              {book.chapters.map((c, i) => <option key={c.id} value={i}>{i + 1}. {c.title || `Chapter ${i + 1}`}</option>)}
-            </select>
-          </div>
-          {unknownWords.length > 0 && (
+          <section className="reader-sidebar-section reader-sidebar-book" data-sidebar-group="book">
+            <span className="reader-sidebar-section-title">Book</span>
+            <h2>{cleanedTitle}</h2>
+            <p className="book-author">{book.author || 'Unknown author'}</p>
+            <div className="reader-sidebar-metrics">
+              <span><strong>{book.chapters.length}</strong> chapters</span>
+              <span><strong>{totalScenes}</strong> scenes</span>
+            </div>
+          </section>
+          <section className="reader-sidebar-section" data-sidebar-group="navigation">
+            <span className="reader-sidebar-section-title">Navigation</span>
+            <div className="reader-sidebar-progress">
+              <div className="reader-sidebar-progress-copy"><span>Scene {itemIndex + 1} of {totalScenes}</span><strong>{Math.round(((itemIndex + 1) / totalScenes) * 100)}%</strong></div>
+              <div className="reader-sidebar-progress-track" aria-hidden="true"><span style={{ width: `${Math.round(((itemIndex + 1) / totalScenes) * 100)}%` }} /></div>
+            </div>
             <div>
-              <label className="section-label">New words ({unknownWords.length})</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
-                {unknownWords.map((uw, idx) => {
-                  const display = uw.surface || uw.word;
-                  return (
-                    <span key={idx} className="word-badge-pair">
-                      <button
-                        type="button"
-                        className={`word-badge ${uw.freq?.category ? `word-freq-${uw.freq.category}` : 'word-freq-unlisted'}`}
-                        title={`${uw.freq ? `Rank ${uw.freq.rank} · ${uw.freq.category}` : 'Unlisted'} · Click to select`}
-                        onClick={() => selectNewWord(uw)}>
-                        {display}
-                      </button>
-                      <button
-                        type="button"
-                        className="mark-known-mini"
-                        title={`Mark ${display} as known`}
-                        onClick={() => handleMarkKnown(uw.word)}>
-                        ✓
-                      </button>
-                    </span>
-                  );
+              <label className="section-label" htmlFor="reader-chapter-select">Jump to chapter</label>
+              <select id="reader-chapter-select" className="chapter-select" value={currentChapterIdx} onChange={event => jumpToChapter(event.target.value)}>
+                {book.chapters.map((chapter, index) => <option key={chapter.id} value={index}>{index + 1}. {chapter.title || `Chapter ${index + 1}`}</option>)}
+              </select>
+            </div>
+          </section>
+          <section className="reader-sidebar-section" data-sidebar-group="new-words">
+            <span className="reader-sidebar-section-title">New Words</span>
+            {unknownWords.length > 0 ? (
+              <div className="reader-sidebar-word-list">
+                {unknownWords.map((unknownWord, index) => {
+                  const display = unknownWord.surface || unknownWord.word;
+                  return <span key={index} className="word-badge-pair">
+                    <button type="button" className={`word-badge ${unknownWord.freq?.category ? `word-freq-${unknownWord.freq.category}` : 'word-freq-unlisted'}`} title={`${unknownWord.freq ? `Rank ${unknownWord.freq.rank} · ${unknownWord.freq.category}` : 'Unlisted'} · Click to select`} onClick={() => selectNewWord(unknownWord)}>{display}</button>
+                    <button type="button" className="mark-known-mini" title={`Mark ${display} as known`} onClick={() => handleMarkKnown(unknownWord.word)}>✓</button>
+                  </span>;
                 })}
               </div>
-            </div>
-          )}
-          {currentChapterImages.length > 0 && (
-            <div>
-              <label className="section-label">Illustrations ({currentChapterImages.length})</label>
+            ) : <p className="reader-sidebar-empty">No new vocabulary in this scene.</p>}
+          </section>
+          <section className="reader-sidebar-section" data-sidebar-group="illustrations">
+            <span className="reader-sidebar-section-title">Illustrations</span>
+            {currentChapterImages.length > 0 ? (
               <div className="image-thumbs">
-                {currentChapterImages.map((img, idx) => {
-                  const displayIdx = displayItems.findIndex(di => di.type === 'illustration' && di.data?.dataUri === img.dataUri);
-                  return (
-                    <div key={idx} className="image-thumb" onClick={() => jumpToImage(img.dataUri)} title={img.alt || ''}>
-                      <img src={img.dataUri} alt={img.alt || ''} />
-                      {displayIdx >= 0 && <span className="thumb-label">Scene {displayIdx + 1}</span>}
-                    </div>
-                  );
+                {currentChapterImages.map((image, index) => {
+                  const displayIndex = displayItems.findIndex(item => item.type === 'illustration' && item.data?.dataUri === image.dataUri);
+                  return <button type="button" key={index} className="image-thumb" onClick={() => jumpToImage(image.dataUri)} title={image.alt || ''}>
+                    <img src={image.dataUri} alt={image.alt || ''} />
+                    {displayIndex >= 0 && <span className="thumb-label">Scene {displayIndex + 1}</span>}
+                  </button>;
                 })}
               </div>
+            ) : <p className="reader-sidebar-empty">No illustrations in this chapter.</p>}
+          </section>
+          <section className="reader-sidebar-section" data-sidebar-group="display">
+            <span className="reader-sidebar-section-title">Display</span>
+            <div className="reader-sidebar-display-actions">
+              <button className="secondary" onClick={() => setShowFurigana(value => !value)}>Furigana {showFurigana ? 'On' : 'Off'}</button>
+              <button className="secondary" onClick={() => setVerticalMode(value => !value)}>{verticalMode ? 'Vertical' : 'Horizontal'}</button>
+              <button className="secondary teaching-toggle" onClick={handleToggleTeachingMode} style={{ background: teachingMode ? 'var(--accent)' : undefined }}>Teaching {teachingMode ? 'On' : 'Off'}</button>
             </div>
-          )}
-          <div style={{ display: 'flex', gap: '6px' }}>
-            <button className="secondary" onClick={() => setShowFurigana(v => !v)} style={{ flex: 1, fontSize: '12px' }}>Furigana: {showFurigana ? 'ON' : 'OFF'}</button>
-            <button className="secondary" onClick={() => setVerticalMode(v => !v)} style={{ flex: 1, fontSize: '12px' }}>{verticalMode ? 'Vertical' : 'Horizontal'}</button>
-          </div>
-          <button className="secondary teaching-toggle" onClick={() => { setTeachingMode(v => !v); setTeachingSelection(null); }} style={{ fontSize: '11px', background: teachingMode ? 'var(--accent)' : undefined }}>
-            Teaching Mode: {teachingMode ? 'ON' : 'OFF'}
-          </button>
-          <details open={showStyle} onToggle={e => setShowStyle(e.target.open)}>
-            <summary style={{ fontSize: '12px', color: 'var(--muted)', cursor: 'pointer' }}>Reader style</summary>
-            <div className="style-panel">
-              <div className="style-row"><span>Font size</span><div><button onClick={() => stepStyle('fontSize', -2, 20, 46)}>−</button><b>{readerStyle.fontSize}</b><button onClick={() => stepStyle('fontSize', 2, 20, 46)}>+</button></div></div>
-              <input type="range" min="20" max="46" value={readerStyle.fontSize} onChange={e => updateStyle({ fontSize: Number(e.target.value) })} />
-              <div className="style-row"><span>Line spacing</span><div><button onClick={() => stepStyle('lineHeight', -0.1, 1.4, 2.8)}>−</button><b>{readerStyle.lineHeight.toFixed(2)}</b><button onClick={() => stepStyle('lineHeight', 0.1, 1.4, 2.8)}>+</button></div></div>
-              <input type="range" min="1.4" max="2.8" step="0.05" value={readerStyle.lineHeight} onChange={e => updateStyle({ lineHeight: Number(e.target.value) })} />
-              <div className="style-row"><span>Height</span><div><button onClick={() => stepStyle('height', -40, 420, 900)}>−</button><b>{readerStyle.height}</b><button onClick={() => stepStyle('height', 40, 420, 900)}>+</button></div></div>
-              <input type="range" min="420" max="900" step="20" value={readerStyle.height} onChange={e => updateStyle({ height: Number(e.target.value) })} />
-              <button className="secondary" onClick={resetStyle} style={{ marginTop: '8px', width: '100%', fontSize: '11px' }}>Reset to default</button>
-            </div>
-          </details>
-          <details className="dictionary-settings">
-            <summary>Settings · Dictionary Management</summary>
-            <DictionaryManagementPanel />
-          </details>
-          <details className="advanced-settings">
-            <summary>Advanced</summary>
-            <div style={{ display: 'grid', gap: '8px', marginTop: '8px' }}>
-              <label style={{ fontSize: '11px', color: 'var(--muted)' }}>Note type: <input value={noteType} onChange={e => setNoteType(e.target.value)} /></label>
-              <label style={{ fontSize: '11px', color: 'var(--muted)', display: 'grid', gap: '4px' }}>
-                Colour source:
-                <select
-                  value={colorSource}
-                  onChange={event => setColorSource(
-                    normalizeColorSource(event.target.value)
-                  )}
-                >
-                  <option value={COLOR_SOURCES.JP_ANALYZER}>JP Analyzer</option>
-                  <option value={COLOR_SOURCES.PLAIN_TEXT}>Plain text</option>
-                </select>
-                <span style={{ fontSize: '10px' }}>
-                  JP Analyzer is the sole linguistic source. Plain Text changes presentation only; invalid analyzer output remains neutral.
-                </span>
-              </label>
-              <label style={{ fontSize: '11px', color: 'var(--muted)', display: 'grid', gap: '4px' }}>Session Token: <input value={sessionToken} onChange={e => handleSaveSessionToken(e.target.value)} placeholder="Paste __Secure-nadeshiko.session_token" /><span style={{ fontSize: '10px' }}>F12 → Application → Cookies → nadeshiko.co</span></label>
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                <button className="secondary" onClick={async () => { try { await buildCache(ankiRequest); setCacheVersion(v => v + 1); } catch {} }} style={{ fontSize: '10px', padding: '4px 8px' }}>Rebuild Cache</button>
-                <button className="secondary" onClick={() => { clearCache(); setCacheVersion(v => v + 1); }} style={{ fontSize: '10px', padding: '4px 8px' }}>Clear Anki Cache</button>
-                <button className="secondary" onClick={toggleForceTts} style={{ fontSize: '10px', padding: '4px 8px', background: forceTts ? 'var(--warning)' : undefined }}>Force TTS: {forceTts ? 'ON' : 'OFF'}</button>
-                <button className="secondary" onClick={() => setDebugMode(v => !v)} style={{ fontSize: '10px', padding: '4px 8px', background: debugMode ? 'var(--accent)' : undefined }}>Debug Mode: {debugMode ? 'ON' : 'OFF'}</button>
+            <details className="reader-sidebar-style" open={showStyle} onToggle={event => setShowStyle(event.target.open)}>
+              <summary>Reading appearance</summary>
+              <div className="style-panel">
+                <div className="style-row"><span>Font size</span><div><button onClick={() => stepStyle('fontSize', -2, 20, 46)}>−</button><b>{readerStyle.fontSize}</b><button onClick={() => stepStyle('fontSize', 2, 20, 46)}>+</button></div></div>
+                <input type="range" min="20" max="46" value={readerStyle.fontSize} onChange={event => updateStyle({ fontSize: Number(event.target.value) })} />
+                <div className="style-row"><span>Line spacing</span><div><button onClick={() => stepStyle('lineHeight', -0.1, 1.4, 2.8)}>−</button><b>{readerStyle.lineHeight.toFixed(2)}</b><button onClick={() => stepStyle('lineHeight', 0.1, 1.4, 2.8)}>+</button></div></div>
+                <input type="range" min="1.4" max="2.8" step="0.05" value={readerStyle.lineHeight} onChange={event => updateStyle({ lineHeight: Number(event.target.value) })} />
+                <div className="style-row"><span>Height</span><div><button onClick={() => stepStyle('height', -40, 420, 900)}>−</button><b>{readerStyle.height}</b><button onClick={() => stepStyle('height', 40, 420, 900)}>+</button></div></div>
+                <input type="range" min="420" max="900" step="20" value={readerStyle.height} onChange={event => updateStyle({ height: Number(event.target.value) })} />
+                <button className="secondary" onClick={resetStyle} style={{ marginTop: '8px', width: '100%', fontSize: '11px' }}>Reset to default</button>
               </div>
-            </div>
-          </details>
-
-          {debugMode && (
-            <div className="debug-panel">
-              <div className="debug-panel-title-row">
-                <div className="debug-panel-title">Debug Report</div>
-              </div>
-              <div className="debug-summary-grid">
-                <div className="debug-mini-card"><span>Analyzer</span><strong>{jpAnalyzerShadow?.status ?? 'idle'}</strong></div>
-                <div className="debug-mini-card"><span>Reader contract</span><strong>{jpAnalyzerReader.valid ? 'valid' : 'invalid'}</strong></div>
-                <div className="debug-mini-card"><span>Result source</span><strong>{jpAnalyzerShadow?.source ?? '-'}</strong></div>
-                <div className="debug-mini-card"><span>Scene</span><strong>{itemIndex + 1} / {totalScenes}</strong></div>
-              </div>
-              <label style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '8px', fontSize: '10px', color: 'var(--muted)' }}>
-                <input type="checkbox" checked={includeFullParserInventory} onChange={event => setIncludeFullParserInventory(event.target.checked)} />
-                Include full EPUB parser inventory
-              </label>
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
-                <button type="button" className="debug-export-btn" onClick={handleExportDebugReport}>Export Debug Report</button>
-                <button type="button" className="secondary" onClick={handleCopyDiagnosticSummary}>Copy Diagnostic Summary</button>
-                <button type="button" className="secondary" onClick={clearJpAnalyzerShadowCache}>Clear Cached Sentence Analyses</button>
-              </div>
-            </div>
-          )}
+            </details>
+          </section>
         </ReaderSidebar>
 
 
@@ -1207,6 +1150,74 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
             </div>
           )}
         </ReaderViewport>
+        {toolsOpen && (
+          <div className="reader-tools-layer" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setToolsOpen(false); }}>
+            <section className="reader-tools-panel" role="dialog" aria-modal="true" aria-label="Settings and tools">
+              <header className="reader-tools-header">
+                <div><span>Administration</span><h2>Settings and tools</h2></div>
+                <button type="button" className="secondary" onClick={() => setToolsOpen(false)}>Close</button>
+              </header>
+              <div className="reader-tools-content">
+          <details className="dictionary-settings">
+            <summary>Settings · Dictionary Management</summary>
+            <DictionaryManagementPanel />
+          </details>
+          <details className="advanced-settings">
+            <summary>Advanced</summary>
+            <div style={{ display: 'grid', gap: '8px', marginTop: '8px' }}>
+              <label style={{ fontSize: '11px', color: 'var(--muted)' }}>Note type: <input value={noteType} onChange={e => setNoteType(e.target.value)} /></label>
+              <label style={{ fontSize: '11px', color: 'var(--muted)', display: 'grid', gap: '4px' }}>
+                Colour source:
+                <select
+                  value={colorSource}
+                  onChange={event => setColorSource(
+                    normalizeColorSource(event.target.value)
+                  )}
+                >
+                  <option value={COLOR_SOURCES.JP_ANALYZER}>JP Analyzer</option>
+                  <option value={COLOR_SOURCES.PLAIN_TEXT}>Plain text</option>
+                </select>
+                <span style={{ fontSize: '10px' }}>
+                  JP Analyzer is the sole linguistic source. Plain Text changes presentation only; invalid analyzer output remains neutral.
+                </span>
+              </label>
+              <label style={{ fontSize: '11px', color: 'var(--muted)', display: 'grid', gap: '4px' }}>Session Token: <input value={sessionToken} onChange={e => handleSaveSessionToken(e.target.value)} placeholder="Paste __Secure-nadeshiko.session_token" /><span style={{ fontSize: '10px' }}>F12 → Application → Cookies → nadeshiko.co</span></label>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                <button className="secondary" onClick={async () => { try { await buildCache(ankiRequest); setCacheVersion(v => v + 1); } catch {} }} style={{ fontSize: '10px', padding: '4px 8px' }}>Rebuild Cache</button>
+                <button className="secondary" onClick={() => { clearCache(); setCacheVersion(v => v + 1); }} style={{ fontSize: '10px', padding: '4px 8px' }}>Clear Anki Cache</button>
+                <button className="secondary" onClick={toggleForceTts} style={{ fontSize: '10px', padding: '4px 8px', background: forceTts ? 'var(--warning)' : undefined }}>Force TTS: {forceTts ? 'ON' : 'OFF'}</button>
+                <button className="secondary" onClick={() => setDebugMode(v => !v)} style={{ fontSize: '10px', padding: '4px 8px', background: debugMode ? 'var(--accent)' : undefined }}>Debug Mode: {debugMode ? 'ON' : 'OFF'}</button>
+              </div>
+            </div>
+          </details>
+
+          {debugMode && (
+            <div className="debug-panel">
+              <div className="debug-panel-title-row">
+                <div className="debug-panel-title">Debug Report</div>
+              </div>
+              <div className="debug-summary-grid">
+                <div className="debug-mini-card"><span>Analyzer</span><strong>{jpAnalyzerShadow?.status ?? 'idle'}</strong></div>
+                <div className="debug-mini-card"><span>Reader contract</span><strong>{jpAnalyzerReader.valid ? 'valid' : 'invalid'}</strong></div>
+                <div className="debug-mini-card"><span>Result source</span><strong>{jpAnalyzerShadow?.source ?? '-'}</strong></div>
+                <div className="debug-mini-card"><span>Scene</span><strong>{itemIndex + 1} / {totalScenes}</strong></div>
+              </div>
+              <label style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '8px', fontSize: '10px', color: 'var(--muted)' }}>
+                <input type="checkbox" checked={includeFullParserInventory} onChange={event => setIncludeFullParserInventory(event.target.checked)} />
+                Include full EPUB parser inventory
+              </label>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
+                <button type="button" className="debug-export-btn" onClick={handleExportDebugReport}>Export Debug Report</button>
+                <button type="button" className="secondary" onClick={handleCopyDiagnosticSummary}>Copy Diagnostic Summary</button>
+                <button type="button" className="secondary" onClick={clearJpAnalyzerShadowCache}>Clear Cached Sentence Analyses</button>
+              </div>
+            </div>
+          )}
+
+              </div>
+            </section>
+          </div>
+        )}
       </ReaderMainLayout>
     </ReaderShell>
   );

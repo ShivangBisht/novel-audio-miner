@@ -6,7 +6,8 @@ export function ReaderHeader({
   sceneNumber,
   sceneCount,
   sceneType,
-  onLoadAnotherBook
+  onLoadAnotherBook,
+  onOpenTools
 }) {
   const progress = sceneCount > 0 ? Math.round((sceneNumber / sceneCount) * 100) : 0;
   return <header className="reader-header" data-testid="reader-header">
@@ -31,7 +32,10 @@ export function ReaderHeader({
         <span style={{ width: `${progress}%` }} />
       </div>
     </div>
-    <button type="button" className="reader-book-action secondary" onClick={onLoadAnotherBook}>Change book</button>
+    <div className="reader-header-actions">
+      <button type="button" className="reader-tools-button secondary" onClick={onOpenTools} aria-label="Open settings and tools">Tools</button>
+      <button type="button" className="reader-book-action secondary" onClick={onLoadAnotherBook}>Change book</button>
+    </div>
   </header>;
 }
 
