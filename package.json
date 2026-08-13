@@ -54,7 +54,8 @@
     "test:phase14.5a-step3": "npm run test:phase14.5a-step2 && node scripts/test-phase14-dom-visual-selection.mjs",
     "test:phase14.5a-step4": "npm run test:phase14.5a-step3 && node scripts/test-phase14-sentence-local-analysis.mjs",
     "test:phase14.5a-step5": "npm run test:phase14.5a-step4 && node scripts/test-phase14-teaching-input-qualification.mjs",
-    "test:phase14.5a-step6": "npm run test:phase14.5a-step5 && node scripts/test-phase14-controlled-teaching-runtime.mjs && node scripts/test-teaching-panel-shell.mjs && node scripts/test-teaching-lifecycle.mjs && node scripts/test-teaching-decision-workflow.mjs && node scripts/test-analyzer-mining-selection.mjs && node scripts/test-reader-prefetch-integration.mjs"
+    "test:phase14.5a-step6": "npm run test:phase14.5a-step5 && node scripts/test-phase14-controlled-teaching-runtime.mjs && node scripts/test-teaching-panel-shell.mjs && node scripts/test-teaching-lifecycle.mjs && node scripts/test-teaching-decision-workflow.mjs && node scripts/test-analyzer-mining-selection.mjs && node scripts/test-reader-prefetch-integration.mjs",
+    "test:phase14.6": "npm run test:phase14.5a-step6 && npm run test:analyzer-selection-ownership && npm run test:analyzer-session-cache && npm run test:debug-report-v2"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.3",
