@@ -62,7 +62,8 @@
     "test:phase15.1": "npm run test:phase14 && node scripts/test-phase15-ui-contract.mjs",
     "test:phase15.2": "npm run test:phase15.1 && node scripts/test-phase15-reader-shell.mjs && node scripts/test-teaching-panel-shell.mjs && node scripts/test-teaching-lifecycle.mjs && node scripts/test-analyzer-mining-selection.mjs && node scripts/test-reader-prefetch-integration.mjs",
     "test:phase15.3": "npm run test:phase15.2 && node scripts/test-phase15-reading-interface.mjs && npm run build",
-    "test:phase15.4": "npm run test:phase15.3 && node scripts/test-phase15-sidebar-information-architecture.mjs && npm run build"
+    "test:phase15.4": "npm run test:phase15.3 && node scripts/test-phase15-sidebar-information-architecture.mjs && npm run build",
+    "validate:alpha1": "node scripts/validate-alpha1-architecture-baseline.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.3",

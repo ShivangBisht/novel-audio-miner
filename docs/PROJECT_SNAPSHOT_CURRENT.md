@@ -439,3 +439,16 @@ is explicitly selected.
 - Phase 10 is complete.
 - Phase 11, Kuromoji retirement, was completed early.
 - Phase 12 remains future reading-driven maintenance.
+
+<!-- ALPHA_STABILIZATION_BASELINE_START -->
+## Alpha stabilization baseline
+
+novel-audio-miner is frozen for Alpha stabilization. Phase 15 is paused after Phase
+15.4. The authoritative stabilization roadmap is
+[`docs/ALPHA_STABILIZATION_ROADMAP.md`](ALPHA_STABILIZATION_ROADMAP.md), and the
+preserved post-Alpha roadmap is
+[`docs/PHASE16_ROADMAP.md`](PHASE16_ROADMAP.md).
+
+Alpha 1 records responsibility, source-of-truth, route, persistence, and
+retirement registries without changing production behavior.
+<!-- ALPHA_STABILIZATION_BASELINE_END -->

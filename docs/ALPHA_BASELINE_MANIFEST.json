@@ -1,0 +1,27 @@
+{
+  "schema": "AlphaArchitectureBaseline.v1",
+  "frontend": {
+    "path": "D:\\Mining\\novel-audio-miner",
+    "branch": "phase15-ui-overhaul",
+    "commit": "b38caa0ce0e59853f4e1836330f7b21f349641d9",
+    "auditBundle": "PHASE15_16_ARCHITECTURE_AUDIT_SOURCE.md",
+    "auditSha256": "4F8CAC0B71299EF78948FED43C989486F91A325431DC118496D1891DC0D69FBA"
+  },
+  "backend": {
+    "path": "D:\\Mining\\JP analyzer",
+    "branch": "main",
+    "commit": "fb794954135ab18c9a7e0039a76b51b69b6a3d16",
+    "auditBundle": "ALPHA_BACKEND_ARCHITECTURE_AUDIT_SOURCE.md",
+    "auditSha256": "090B3E7F89629863F0FB2A06048C1162538DDB129724D4D0FC74E3355481ABA5"
+  },
+  "workflow": {
+    "yomitan": "standalone-kiku-note-creation",
+    "novelAudioMiner": "latest-kiku-note-enrichment",
+    "jpAnalyzer": "linguistic-authority"
+  },
+  "phaseState": {
+    "phase15": "paused-after-15.4",
+    "alpha": "alpha-1",
+    "phase16": "preserved"
+  }
+}
