@@ -86,6 +86,28 @@ Known non-blocking limitations:
 Phase 15 may rely on one authoritative EPUB parser, contextual visual scenes, immutable logical-sentence ownership, stable analyzer/Teaching/corpus contracts, and qualified mining/prefetch behavior. Phase 13 or 14 ownership must not be reopened without a documented production defect, bounded tests, and rollback.
 <!-- PHASE14_CONSOLIDATED_SNAPSHOT_END -->
 
+<!-- PHASE15_UI_PLAN_START -->
+## Phase 15 UI overhaul baseline
+
+The authoritative Phase 15 roadmap is stored at
+[`docs/PHASE15_UI_OVERHAUL_PLAN.md`](PHASE15_UI_OVERHAUL_PLAN.md). Phase 15.1's
+frozen information architecture is stored at
+[`docs/PHASE15_1_UI_CONTRACT_FREEZE.md`](PHASE15_1_UI_CONTRACT_FREEZE.md).
+
+Phase 15 is a presentation-only overhaul beginning from `phase14-complete`. It
+may reorganize UI layout, hierarchy, styling, typography, components,
+accessibility, responsiveness, visibility, and read-only presentation adapters.
+It must not change EPUB reconstruction, contextual scene wording, logical
+sentence ownership, JP Analyzer behavior or schemas, Teaching persistence,
+corpus formats, learning/tuning, mining semantics, prefetch, or startup
+ownership.
+
+The visual direction is minimalist and harmonious across Reader, Teaching,
+settings, dictionaries, diagnostics, and administration. EPUB typography remains
+preserved inside the reading viewport; all application UI uses one coherent
+local sans-serif stack and semantic design system.
+<!-- PHASE15_UI_PLAN_END -->
+
 
 **Snapshot date:** 1 August 2026, IST  
 **Repository:** Novel Audio Miner  
