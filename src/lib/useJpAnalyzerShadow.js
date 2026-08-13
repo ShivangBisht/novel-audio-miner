@@ -109,6 +109,41 @@ async function resolveSentence(text, metadata, scheduling = {}) {
   return { source: 'network', record, elapsedMs: response.elapsedMs, hash, identity };
 }
 
+export async function analyzeJpAnalyzerSentenceOnDemand(text, {
+  priority = -10,
+  kind = 'foreground'
+} = {}) {
+  const sourceText = String(text ?? '').trim();
+  if (!sourceText) {
+    throw new Error('A non-empty logical sentence is required for analysis.');
+  }
+  if (kind !== 'foreground') {
+    throw new Error('On-demand logical sentence analysis must be foreground work.');
+  }
+
+  let metadata = getAnalyzerMetadataLease();
+  if (!metadata) {
+    const health = await getAnalyzerHealth();
+    metadata = normalizeAnalyzerMetadata(health);
+    if (!metadata.valid) {
+      throw new Error('JP Analyzer health lacks cache identity metadata.');
+    }
+    setAnalyzerMetadataLease(metadata);
+  }
+
+  const resolved = await resolveSentence(sourceText, metadata, {
+    priority,
+    kind: 'foreground',
+    planId: null
+  });
+
+  if (!resolved?.record || resolved.record.text !== sourceText) {
+    throw new Error('JP Analyzer returned no authoritative sentence-local record.');
+  }
+
+  return resolved.record;
+}
+
 export async function prefetchJpAnalyzerSentences(targets, metadata, onProgress, protectedIdentities = []) {
   const planId = `plan-${++planSequence}`;
   const normalized = [];

@@ -43,7 +43,22 @@
     "test:phase13.6": "npm run test:phase13.5 && node scripts/test-phase13-reader-model.mjs",
     "test:phase13.6a": "npm run test:phase13.6 && node scripts/test-phase13-sidebar-sections.mjs",
     "test:phase13.6b": "npm run test:phase13.6a && node scripts/test-phase13-authoritative-parser.mjs",
-    "test:phase13": "npm run test:phase13.6b && node scripts/test-phase13-closeout.mjs"
+    "test:phase13": "npm run test:phase13.6b && node scripts/test-phase13-closeout.mjs",
+    "test:phase14.1": "npm run test:phase13 && node scripts/test-phase14-text-ranges.mjs",
+    "test:phase14.2": "npm run test:phase14.1 && node scripts/test-phase14-minimum-context.mjs",
+    "test:phase14.3": "npm run test:phase14.2 && node scripts/test-phase14-markup-ranges.mjs",
+    "test:phase14.4": "npm run test:phase14.3 && node scripts/test-phase14-contextual-diagnostics.mjs",
+    "test:phase14.5": "npm run test:phase14.4 && node scripts/test-phase14-contextual-activation.mjs && npm run test:reader-prefetch-integration && npm run test:reader-spans",
+    "test:phase14.5a-step1": "npm run test:phase14.5 && node scripts/test-phase14-logical-sentence-ownership.mjs",
+    "test:phase14.5a-step2": "npm run test:phase14.5a-step1 && node scripts/test-phase14-logical-sentence-selection.mjs",
+    "test:phase14.5a-step3": "npm run test:phase14.5a-step2 && node scripts/test-phase14-dom-visual-selection.mjs",
+    "test:phase14.5a-step4": "npm run test:phase14.5a-step3 && node scripts/test-phase14-sentence-local-analysis.mjs",
+    "test:phase14.5a-step5": "npm run test:phase14.5a-step4 && node scripts/test-phase14-teaching-input-qualification.mjs",
+    "test:phase14.5a-step6": "npm run test:phase14.5a-step5 && node scripts/test-phase14-controlled-teaching-runtime.mjs && node scripts/test-teaching-panel-shell.mjs && node scripts/test-teaching-lifecycle.mjs && node scripts/test-teaching-decision-workflow.mjs && node scripts/test-analyzer-mining-selection.mjs && node scripts/test-reader-prefetch-integration.mjs",
+    "test:phase14.6": "npm run test:phase14.5a-step6 && npm run test:analyzer-selection-ownership && npm run test:analyzer-session-cache && npm run test:debug-report-v2",
+    "validate:phase14.7": "node scripts/validate-phase14-cleanup.mjs",
+    "test:phase14": "npm run test:phase14.6 && npm run validate:phase14.7 && npm run validate:phase14.8",
+    "validate:phase14.8": "node scripts/validate-phase14-closeout.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.3",

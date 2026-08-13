@@ -1,5 +1,92 @@
 # Project Snapshot Current
 
+<!-- PHASE14_CONSOLIDATED_SNAPSHOT_START -->
+## Consolidated current status through Phase 14
+
+**Snapshot consolidation date:** 13 August 2026, IST
+**Repository:** Novel Audio Miner
+**Current production baseline:** Phase 14 complete
+**Next planned phase:** Phase 15
+
+> This section is the authoritative current continuation point. The complete earlier snapshot below is preserved as historical context. When an earlier current-state statement conflicts with this section, this Phase 14 consolidation takes precedence.
+
+### Executive status
+
+Novel Audio Miner is the Reader and orchestration application for the local Japanese Novel Miner system. JP Analyzer remains the sole linguistic authority. The supported baseline now includes Phase 8 governed Teaching evidence and corpus contracts, Phase 10 one-application startup, Phase 11 Kuromoji retirement, Phase 12 performance work, Phase 13 authoritative EPUB reconstruction, and Phase 14 contextual reading with logical-sentence Teaching compatibility.
+
+Phase 9 tuning remains deferred until the governed corpus is mature. Phase 14 performed no training, candidate derivation, analyzer mutation, dictionary mutation, activation, or deployment.
+
+### Roadmap position
+
+- Phases 1-8: complete; detailed history is preserved below.
+- Phase 9 governed tuning: deferred until corpus maturity.
+- Phase 10 one-application startup: complete.
+- Phase 11 Kuromoji retirement: complete.
+- Phase 12A backend performance and Phase 12B Reader performance: complete.
+- Phase 13 authoritative EPUB parser and Reader model: complete.
+- Phase 14 contextual reading and logical Teaching ownership: complete.
+- Phase 15: next baseline.
+
+### Final cross-project ownership
+
+JP Analyzer owns Japanese morphology, structure, candidates, dictionary and KWJA evidence, evidence gates, conservative resolution, exact `readerSpans`, `readerCandidates`, `readerSelection`, correction-aware identities, immutable analyzer observations, and backend Teaching/corpus contracts.
+
+Novel Audio Miner owns EPUB interpretation, package/navigation/content-event reconstruction, sections and image roles, atomic logical sentence ranges, contextual visual scenes, DOM selection mapping, Reader rendering and navigation, known/frequency lookup, Teaching UI orchestration, Anki mining, bounded prefetch, and debug-report presentation.
+
+Novel Audio Miner must not merge or split analyzer spans for linguistic purposes, invent grammar/name/compound identity, manufacture lookup keys, or treat dictionary misses as linguistic rejection.
+
+### Phase 13 authoritative EPUB pipeline
+
+```text
+EPUB archive
+  -> canonical package model
+  -> fragment-preserving navigation and ordered XHTML events
+  -> lossless text and image ownership
+  -> structural sections and image roles
+  -> qualified authoritative Reader model
+```
+
+The pipeline preserves ordered text, images, ruby base text, headings, breaks, tables, lists, captions, navigation fragments, cover/front-matter ownership, and chapter boundaries. Navigation documents provide structure without becoming normal Reader scenes. Qualification fallback remains inside the same Phase 13 authoritative runtime and does not restore the retired parser.
+
+### Phase 14 contextual Reader architecture
+
+Phase 14 delivered atomic gap-free text ranges, Unicode meaningful-character counting, complete-candidate minimum-context planning, markup-preserving slices, privacy-safe contextual diagnostics, contextual Reader activation, immutable logical-sentence ownership, DOM visual-offset mapping, sentence-local on-demand analyzer access, and controlled Teaching runtime integration.
+
+Contextual scenes never cross images, EPUB documents, structural sections, headings, thematic breaks, or excluded navigation. Attached candidates are complete and are never truncated. Separate source blocks retain visual line or vertical-column breaks. Ruby and safe inline markup remain preserved.
+
+Visual grouping does not redefine Teaching identity. Contextual Teaching resolves one retained logical sentence, requests an ordinary sentence-local analyzer record, and supplies the unchanged formal Teaching selection and `{ words, candidates, selection }` analysis objects.
+
+### Analyzer, Teaching, mining, and prefetch compatibility
+
+Phase 14 did not change analyzer HTTP records, `readerSpans`, `readerCandidates`, `readerSelection`, cache identity, correction revision, metadata lease, scheduling, Teaching selection/analysis, correction payloads, evidence, decisions, supersession, sentence hashes, corpus records, export, portability, governance, evaluation, tuning handoff, or mining selection formats.
+
+Existing Teaching evidence remains recognized. New evidence from contextual scenes can be previewed, reviewed, saved, reopened, edited, superseded, and corrected through the existing lifecycle. No corpus migration is required.
+
+Reader analysis remains single-worker, foreground-first, duplicate-coalescing, correction-aware, and bounded to a memory-only 50-entry session cache. The rolling plan protects current, immediate previous, and next ten planned text scenes. Images do not trigger text analysis. Mining retains its established Reader-analysis ownership.
+
+### Qualification and cleanup
+
+Automated qualification covers Phase 14.1-14.5, all six Phase 14.5A steps, Teaching lifecycle and decision workflow, analyzer selection ownership, mining, prefetch, session cache, Debug Report v2, Phase 13 baseline, Phase 12B validation, and production build.
+
+Manual qualification covered multiple unrelated EPUBs with narration, dialogue, ruby, symbols, images, front/afterword material, EPUB 2/3 navigation, normalized reconstruction, horizontal/vertical layouts, standalone/contextual Teaching, existing evidence recognition, and new evidence save/reopen. Phase 14.7 found no removable live production module or unwanted tracked artifact.
+
+### Current safety state and deferred work
+
+Training, automatic rule generation, activation, and deployment remain disabled unless separately qualified. Continue collecting genuine Teaching evidence and preserve the earlier governance maturity gates and dictionary-recovery record.
+
+Known non-blocking limitations:
+
+- some tiny typographic end-matter images may remain standalone scenes;
+- the production JavaScript bundle is slightly above Vite's default warning threshold;
+- exact publisher pagination and fixed EPUB page geometry are not reproduced;
+- the six post-recovery dictionary updates recorded below remain a controlled maintenance item unless already reapplied through the supported workflow.
+
+### Phase 15 continuation rule
+
+Phase 15 may rely on one authoritative EPUB parser, contextual visual scenes, immutable logical-sentence ownership, stable analyzer/Teaching/corpus contracts, and qualified mining/prefetch behavior. Phase 13 or 14 ownership must not be reopened without a documented production defect, bounded tests, and rollback.
+<!-- PHASE14_CONSOLIDATED_SNAPSHOT_END -->
+
+
 **Snapshot date:** 1 August 2026, IST  
 **Repository:** Novel Audio Miner  
 **Post-Alpha status:** A-F complete  

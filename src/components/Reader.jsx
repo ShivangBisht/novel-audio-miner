@@ -8,12 +8,16 @@ import { autoEnrichWordWithFallback, generateVoicevoxAudio } from '../lib/enrich
 import { buildCache, clearCache, getCacheSize, addKnownWord, addManualKnownWord, removeManualKnownWord, isManualKnownWord, isKnownWord } from '../lib/wordCache.js';
 import { getFrequency, startLoadingGlobalFrequency } from '../lib/frequencyMap.js';
 import {
+  analyzeJpAnalyzerSentenceOnDemand,
   clearJpAnalyzerShadowCache,
   getAnalyzerSchedulerSnapshot,
   getAnalyzerSessionCacheSnapshot,
   useJpAnalyzerShadow
 } from '../lib/useJpAnalyzerShadow.js';
 import { adaptReaderSpansForRendering } from '../lib/analyzerReaderSpanAdapter.js';
+import { resolveDomVisualSelection, domVisualSelectionMessage } from '../lib/scenePlanning/domVisualSelection.js';
+import { resolveLogicalSentenceSelection, logicalSentenceSelectionMessage } from '../lib/scenePlanning/logicalSentenceSelection.js';
+import { qualifyLogicalTeachingInput, logicalTeachingQualificationMessage } from '../lib/scenePlanning/teachingInputQualification.js';
 import { planRollingTextScenePrefetch } from '../lib/scenePrefetch.js';
 import { resolveAnalyzerPresentationClass } from '../lib/analyzerPresentationPolicy.js';
 import { buildAnalyzerLearningModel, resolveLearningOwnership } from '../lib/analyzerLearningModel.js';
@@ -363,6 +367,8 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   const [status, setStatus] = useState({ type: '', message: '' });
   const [teachingMode, setTeachingMode] = useState(false);
   const [teachingSelection, setTeachingSelection] = useState(null);
+  const [teachingAnalysis, setTeachingAnalysis] = useState(null);
+  const teachingAnalysisRequestRef = useRef(0);
   const [lastTeachingReceipt, setLastTeachingReceipt] = useState(null);
   const [analyzerRefreshKey, setAnalyzerRefreshKey] = useState(0);
   const [enrichResult, setEnrichResult] = useState(null);
@@ -522,7 +528,9 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     setSelectedText('');
     setSelectedReaderContext(null);
     setSelectionIssue('');
+    teachingAnalysisRequestRef.current += 1;
     setTeachingSelection(null);
+    setTeachingAnalysis(null);
   }, [itemIndex]);
 
   async function checkAnkiStatus() {
@@ -543,23 +551,106 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     setAnalyzerRefreshKey(value => value + 1);
     setSelectedReaderContext(null);
     setSelectionIssue('');
+    teachingAnalysisRequestRef.current += 1;
+    setTeachingSelection(null);
+    setTeachingAnalysis(null);
     setStatus({ type: 'working', message: `Correction revision ${result.correctionRevisionAfter || 'updated'}; refreshing reader analysis...` });
   }
 
   function handleTextSelection() {
-    setTimeout(() => {
+    setTimeout(async () => {
       const rawSelectedText = getSelectedWord();
       if (!rawSelectedText) return;
       if (teachingMode) {
-        const result = resolveTeachingSelection({
-          root: sentenceBoxRef.current,
-          selection: window.getSelection(),
-          sentence: currentData?.plainText || '',
-          analyzerSpans: jpAnalyzerReader.words,
-        });
-        setTeachingSelection(result.valid ? result : null);
-        setStatus({ type: result.valid ? 'ok' : 'error', message: teachingSelectionMessage(result) });
-        if (!result.valid) return;
+        const logicalSentences = Array.isArray(currentData?.logicalSentences)
+          ? currentData.logicalSentences
+          : [];
+        const usesContextualTeaching = logicalSentences.length > 1;
+
+        if (usesContextualTeaching) {
+          const requestId = teachingAnalysisRequestRef.current + 1;
+          teachingAnalysisRequestRef.current = requestId;
+          setTeachingSelection(null);
+          setTeachingAnalysis(null);
+
+          const domSelection = resolveDomVisualSelection({
+            root: sentenceBoxRef.current,
+            selection: window.getSelection(),
+            expectedText: currentData?.plainText || ''
+          });
+          if (!domSelection.valid) {
+            setStatus({
+              type: 'error',
+              message: domVisualSelectionMessage(domSelection)
+            });
+            return;
+          }
+
+          const logicalSelection = resolveLogicalSentenceSelection({
+            scene: currentData,
+            start: domSelection.start,
+            end: domSelection.end,
+            visibleText: domSelection.visibleText
+          });
+          if (!logicalSelection.valid) {
+            setStatus({
+              type: 'error',
+              message: logicalSentenceSelectionMessage(logicalSelection)
+            });
+            return;
+          }
+
+          setStatus({
+            type: 'working',
+            message: 'Preparing sentence-local Teaching analysis...'
+          });
+
+          try {
+            const analyzerRecord = await analyzeJpAnalyzerSentenceOnDemand(
+              logicalSelection.sentence
+            );
+            if (teachingAnalysisRequestRef.current !== requestId) return;
+
+            const qualified = qualifyLogicalTeachingInput({
+              logicalSelection,
+              analyzerRecord
+            });
+            if (!qualified.valid) {
+              setStatus({
+                type: 'error',
+                message: logicalTeachingQualificationMessage(qualified)
+              });
+              return;
+            }
+
+            setTeachingSelection(qualified.selection);
+            setTeachingAnalysis(qualified.analysis);
+            setStatus({
+              type: 'ok',
+              message: teachingSelectionMessage(qualified.selection)
+            });
+          } catch (error) {
+            if (teachingAnalysisRequestRef.current !== requestId) return;
+            setTeachingSelection(null);
+            setTeachingAnalysis(null);
+            setStatus({
+              type: 'error',
+              message: error?.message || 'Sentence-local Teaching analysis failed.'
+            });
+            return;
+          }
+        } else {
+          const result = resolveTeachingSelection({
+            root: sentenceBoxRef.current,
+            selection: window.getSelection(),
+            sentence: currentData?.plainText || '',
+            analyzerSpans: jpAnalyzerReader.words,
+          });
+          setTeachingAnalysis(null);
+          setTeachingSelection(result.valid ? result : null);
+          setStatus({ type: result.valid ? 'ok' : 'error', message: teachingSelectionMessage(result) });
+          if (!result.valid) return;
+        }
       }
       setSelectedText(rawSelectedText);
       setSelectedReaderContext(null);
@@ -1050,7 +1141,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
                 <div className="teaching-drawer-layer">
                   <TeachingPanel
                     selection={teachingSelection}
-                    analysis={{ words: jpAnalyzerReader.words, candidates: jpAnalyzerShadow?.result?.readerCandidates || [], selection: jpAnalyzerShadow?.result?.readerSelection || {} }}
+                    analysis={teachingAnalysis || { words: jpAnalyzerReader.words, candidates: jpAnalyzerShadow?.result?.readerCandidates || [], selection: jpAnalyzerShadow?.result?.readerSelection || {} }}
                     provenance={{
                       bookId: book?.id || null,
                       bookTitle: book?.title || book?.fileName || null,
@@ -1060,7 +1151,11 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
                       leftContext: flatItems?.[itemIndex - 1]?.type === 'sentence' ? flatItems[itemIndex - 1]?.plainText || null : null,
                       rightContext: flatItems?.[itemIndex + 1]?.type === 'sentence' ? flatItems[itemIndex + 1]?.plainText || null : null,
                     }}
-                    onClose={() => setTeachingSelection(null)}
+                    onClose={() => {
+                      teachingAnalysisRequestRef.current += 1;
+                      setTeachingSelection(null);
+                      setTeachingAnalysis(null);
+                    }}
                     onCorrectionMutation={handleCorrectionMutation}
                     lastTeachingReceipt={lastTeachingReceipt}
                     onTeachingReceipt={setLastTeachingReceipt}
