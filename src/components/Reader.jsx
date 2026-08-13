@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import DictionaryManagementPanel from './DictionaryManagementPanel.jsx';
 import TeachingPanel from './TeachingPanel.jsx';
 import { ReaderShell, ReaderStatusBar, ReaderTopBar, ReaderMainLayout, ReaderSidebar, ReaderViewport } from './reader/ReaderShell.jsx';
+import { ReaderHeader, ReaderNavigation, ReaderSidebarToggle, ReaderSceneFrame } from './reader/ReaderChrome.jsx';
 import { resolveTeachingSelection, teachingSelectionMessage } from '../lib/teachingSelectionResolver.js';
 import { getProgress, saveProgress } from '../lib/storage.js';
 import { checkAnkiConnect, findLatestNote, updateNoteFields, ankiRequest } from '../lib/ankiConnect.js';
@@ -960,16 +961,19 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
         </div>
       </ReaderStatusBar>
 
-      <ReaderTopBar>
-        <div style={{ display: 'flex', alignItems: 'baseline' }}>
-          <h1>{cleanedTitle}</h1>
-          <span className="version">v4.1</span>
-        </div>
-        <button className="secondary" onClick={onLoadAnotherBook}>Load another book</button>
-      </ReaderTopBar>
+      <ReaderHeader
+        title={cleanedTitle}
+        chapterTitle={currentData?.chapterTitle || ''}
+        chapterIndex={currentChapterIdx}
+        chapterCount={book.chapters.length}
+        sceneNumber={itemIndex + 1}
+        sceneCount={totalScenes}
+        sceneType={isImage ? 'illustration' : 'text'}
+        onLoadAnotherBook={onLoadAnotherBook}
+      />
 
       <ReaderMainLayout>
-        <div className="sidebar-toggle" onClick={() => setSidebarOpen(v => !v)} title="Toggle sidebar (S)">{sidebarOpen ? '✕' : '☰'}</div>
+        <ReaderSidebarToggle open={sidebarOpen} onToggle={() => setSidebarOpen(value => !value)} />
 
         <ReaderSidebar open={sidebarOpen}>
           <h2>{cleanedTitle}</h2>
@@ -1107,22 +1111,24 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
 
 
         <ReaderViewport>
-          <div className="nav-header">
-            <span className="chapter-info">
-              {currentData?.chapterTitle || ''}
-              <span style={{ color: 'var(--muted)', marginLeft: '8px' }}>Ch. {currentChapterIdx + 1}/{book.chapters.length}</span>
-            </span>
-            <div className="nav-controls">
-              <button onClick={() => setItemIndex(i => Math.max(0, i - 1))} disabled={itemIndex === 0}>←</button>
-              <input type="number" min="1" max={totalScenes} value={goInput} onChange={e => setGoInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleGo(); }} placeholder={`1-${totalScenes}`} />
-              <button onClick={handleGo}>Go</button>
-              <button onClick={() => setItemIndex(i => Math.min(totalScenes - 1, i + 1))} disabled={itemIndex === totalScenes - 1}>→</button>
-            </div>
-            <span className="item-counter">{isText ? '📖' : '🖼️'} Scene {itemIndex + 1}/{totalScenes}</span>
-          </div>
+          <ReaderNavigation
+            chapterTitle={currentData?.chapterTitle || ''}
+            chapterIndex={currentChapterIdx}
+            chapterCount={book.chapters.length}
+            sceneNumber={itemIndex + 1}
+            sceneCount={totalScenes}
+            sceneType={isImage ? 'illustration' : 'text'}
+            goInput={goInput}
+            onGoInput={event => setGoInput(event.target.value)}
+            onGo={handleGo}
+            onPrevious={() => setItemIndex(index => Math.max(0, index - 1))}
+            onNext={() => setItemIndex(index => Math.min(totalScenes - 1, index + 1))}
+            previousDisabled={itemIndex === 0}
+            nextDisabled={itemIndex === totalScenes - 1}
+          />
 
           {isText && currentData && (
-            <>
+            <ReaderSceneFrame type="text">
               <div ref={sentenceBoxRef}
                 className="sentence-box"
                 lang="ja" style={boxStyle}
@@ -1163,18 +1169,20 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
                   />
                 </div>
               )}
-            </>
+            </ReaderSceneFrame>
           )}
 
           {isImage && currentData && (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              <div className="image-panel" onClick={() => toggleImageBlur(currentData.dataUri)}>
-                <img src={currentData.dataUri} alt={currentData.alt || ''} className={!unblurredImages.has(currentData.dataUri) ? 'blurred' : ''} />
-                {!unblurredImages.has(currentData.dataUri) && <div className="unblur-btn">Click to reveal</div>}
+            <ReaderSceneFrame type="illustration">
+              <div className="reader-illustration-stage">
+                <div className="image-panel" onClick={() => toggleImageBlur(currentData.dataUri)}>
+                  <img src={currentData.dataUri} alt={currentData.alt || ''} className={!unblurredImages.has(currentData.dataUri) ? 'blurred' : ''} />
+                  {!unblurredImages.has(currentData.dataUri) && <div className="unblur-btn">Click to reveal</div>}
+                </div>
+                {currentData.alt && unblurredImages.has(currentData.dataUri) && <div className="image-caption">{currentData.alt}</div>}
+                {status.message && <div className={`status-message ${status.type}`} style={{ marginTop: '8px' }}>{status.message}</div>}
               </div>
-              {currentData.alt && unblurredImages.has(currentData.dataUri) && <div className="image-caption">{currentData.alt}</div>}
-              {status.message && <div className={`status-message ${status.type}`} style={{ marginTop: '8px' }}>{status.message}</div>}
-            </div>
+            </ReaderSceneFrame>
           )}
 
           {isText && (

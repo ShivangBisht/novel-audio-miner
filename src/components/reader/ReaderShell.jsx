@@ -1,5 +1,5 @@
 export function ReaderShell({ children }) {
-  return <>{children}</>;
+  return <div className="reader-shell">{children}</div>;
 }
 
 export function ReaderStatusBar({ children }) {
