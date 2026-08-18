@@ -462,3 +462,8 @@ not an actionable span authority. DOM and New Words entry paths are qualified by
 an equivalence test, and known-word mutations receive explicit interaction
 identity. Teaching range contracts and backend contracts remain unchanged.
 <!-- ALPHA2_CANONICAL_INTERACTION_END -->
+
+
+## Alpha 3 selection interaction
+
+Alpha 3 adds click, tap, and keyboard activation for exact authoritative Reader spans, persistent canonical-span highlighting, accessible focus, and Escape-to-clear. Native drag remains available for copying and existing Teaching ranges. JP Analyzer contracts, New Words authority, known-word persistence, Teaching, contextual scenes, EPUB parsing, enrichment, dictionaries, and prefetch remain unchanged.

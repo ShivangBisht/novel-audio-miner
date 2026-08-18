@@ -64,7 +64,8 @@
     "test:phase15.3": "npm run test:phase15.2 && node scripts/test-phase15-reading-interface.mjs && npm run build",
     "test:phase15.4": "npm run test:phase15.3 && node scripts/test-phase15-sidebar-information-architecture.mjs && npm run build",
     "validate:alpha1": "node scripts/validate-alpha1-architecture-baseline.mjs",
-    "test:alpha2": "npm run validate:alpha1 && node scripts/test-alpha2-reader-interaction.mjs && npm run test:analyzer-learning-model && npm run test:analyzer-learning-activation && npm run test:analyzer-mining-selection && npm run test:analyzer-selection-ownership && npm run test:phase15.4"
+    "test:alpha2": "npm run validate:alpha1 && node scripts/test-alpha2-reader-interaction.mjs && npm run test:analyzer-learning-model && npm run test:analyzer-learning-activation && npm run test:analyzer-mining-selection && npm run test:analyzer-selection-ownership && npm run test:phase15.4",
+    "test:alpha3": "npm run test:alpha2 && node scripts/test-alpha3-selection-interaction.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.3",

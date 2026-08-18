@@ -732,3 +732,24 @@ button:focus-visible, .sidebar-toggle:focus-visible { outline: 2px solid var(--a
   .reader-tools-button { padding-inline: 11px; }
 }
 /* PHASE15_4_SIDEBAR_INFORMATION_ARCHITECTURE_END */
+
+
+/* ALPHA3_SELECTION_INTERACTION_BEGIN */
+[data-reader-interactive="true"] {
+  border-radius: 0.18em;
+  cursor: pointer;
+  transition: background-color .14s ease, box-shadow .14s ease, filter .14s ease;
+}
+[data-reader-interactive="true"]:hover {
+  background: rgba(88, 166, 255, 0.10);
+}
+[data-reader-interactive="true"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  background: rgba(88, 166, 255, 0.12);
+}
+.reader-span-selected {
+  background: rgba(88, 166, 255, 0.22) !important;
+  box-shadow: inset 0 -0.12em 0 rgba(121, 192, 255, 0.72), 0 0 0 1px rgba(88, 166, 255, 0.40);
+}
+/* ALPHA3_SELECTION_INTERACTION_END */

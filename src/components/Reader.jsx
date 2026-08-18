@@ -25,6 +25,7 @@ import { resolveAnalyzerPresentationClass } from '../lib/analyzerPresentationPol
 import { buildAnalyzerLearningModel, resolveLearningOwnership } from '../lib/analyzerLearningModel.js';
 import { getAnalyzerMiningLookupKey, getAnalyzerSelectionActionState, resolveAnalyzerReaderContextForOffsets } from '../lib/analyzerMiningSelection.js';
 import { resolveCanonicalReaderInteractionFromReference } from '../lib/readerInteractionContext.js';
+import { interactionMatchesAnalyzerElement, isReaderSpanActivationKey, readAnalyzerElementIdentity } from '../lib/readerSpanInteraction.js';
 import { buildDebugReportV2, buildDiagnosticSummaryV2 } from '../lib/debugReportV2.js';
 import { buildSanitizedAnalyzerObservability } from '../lib/analyzerObservability.js';
 import { ANALYZER_METADATA_LEASE_MS, getAnalyzerMetadataLease } from '../lib/analyzerMetadataLease.js';
@@ -219,7 +220,7 @@ function renderColorizedPlainText(text, tokens, verticalMode) {
   let cursor = 0;
   ranges.forEach((range, index) => {
     if (range.start > cursor) parts.push(<span key={`plain-gap-${index}`}>{renderTextFragment(source.slice(cursor, range.start), verticalMode, `plain-gap-${index}`)}</span>);
-    parts.push(<span key={`plain-token-${index}`} className={range.className} data-token={range.surface} data-analyzer-start={range.analyzerStart} data-analyzer-end={range.analyzerEnd}>{renderTextFragment(source.slice(range.start, range.end), verticalMode, `plain-token-${index}`)}</span>);
+    parts.push(<span key={`plain-token-${index}`} className={range.className} data-token={range.surface} data-analyzer-start={range.analyzerStart} data-analyzer-end={range.analyzerEnd} data-reader-interactive="true" role="button" tabIndex={0} aria-label={`Select ${range.surface}`}>{renderTextFragment(source.slice(range.start, range.end), verticalMode, `plain-token-${index}`)}</span>);
     cursor = range.end;
   });
   if (cursor < source.length) parts.push(<span key="plain-tail">{renderTextFragment(source.slice(cursor), verticalMode, 'plain-tail')}</span>);
@@ -284,6 +285,10 @@ function applyRangesToVisibleTextNodes(nodes, ranges) {
         span.dataset.token = segment.surface;
         span.dataset.analyzerStart = String(segment.analyzerStart);
         span.dataset.analyzerEnd = String(segment.analyzerEnd);
+        span.dataset.readerInteractive = 'true';
+        span.setAttribute('role', 'button');
+        span.tabIndex = 0;
+        span.setAttribute('aria-label', `Select ${segment.surface}`);
         span.textContent = matched;
         frag.appendChild(span);
       }
@@ -526,7 +531,12 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   ]);
   useEffect(() => {
     function key(event) {
+      if (event.key === 'Escape') {
+        clearReaderInteraction();
+        return;
+      }
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
+      if (document.activeElement?.closest?.('[data-reader-interactive="true"]')) return;
       if (event.key === 'ArrowRight' || event.key === ' ') { event.preventDefault(); setItemIndex(i => Math.min(totalScenes - 1, i + 1)); }
       else if (event.key === 'ArrowLeft') { event.preventDefault(); setItemIndex(i => Math.max(0, i - 1)); }
       else if (event.key.toLowerCase() === 'f') setShowFurigana(v => !v);
@@ -550,6 +560,66 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     setTeachingSelection(null);
     setTeachingAnalysis(null);
   }, [itemIndex]);
+
+  useEffect(() => {
+    const root = sentenceBoxRef.current;
+    if (!root) return;
+    const elements = root.querySelectorAll('[data-reader-interactive="true"][data-analyzer-start][data-analyzer-end]');
+    elements.forEach(element => {
+      const selected = interactionMatchesAnalyzerElement(selectedReaderContext, element);
+      element.classList.toggle('reader-span-selected', selected);
+      element.setAttribute('aria-selected', selected ? 'true' : 'false');
+    });
+  }, [selectedReaderContext, activeDisplayWords, showFurigana, verticalMode, itemIndex]);
+
+  function clearReaderInteraction() {
+    setSelectedText('');
+    setSelectedReaderContext(null);
+    setSelectionIssue('');
+    window.getSelection()?.removeAllRanges?.();
+  }
+
+  function activateAnalyzerElement(element, entryPoint = 'pointer') {
+    if (teachingMode || learningOwnership.source !== 'jp-analyzer') return false;
+    const identity = readAnalyzerElementIdentity(element);
+    if (!identity) return false;
+    const resolution = resolveAnalyzerReaderContextForOffsets(
+      jpAnalyzerReader.words,
+      identity.start,
+      identity.end,
+      identity.surface
+    );
+    if (!resolution.valid) {
+      setSelectedReaderContext(null);
+      setSelectedText(identity.surface);
+      setSelectionIssue(`Reader interaction could not be resolved: ${resolution.reason || 'unknown reason'}.`);
+      return false;
+    }
+    const context = Object.freeze({ ...resolution.context, entryPoint });
+    setSelectedReaderContext(context);
+    setSelectedText(context.surface);
+    setSelectionIssue('');
+    window.getSelection()?.removeAllRanges?.();
+    return true;
+  }
+
+  function handleReaderSpanClick(event) {
+    if (teachingMode) return;
+    const selection = window.getSelection();
+    if (selection && !selection.isCollapsed) return;
+    const element = event.target?.closest?.('[data-reader-interactive="true"][data-analyzer-start][data-analyzer-end]');
+    if (!element || !sentenceBoxRef.current?.contains(element)) return;
+    activateAnalyzerElement(element, 'pointer');
+  }
+
+  function handleReaderSpanKeyDown(event) {
+    if (!isReaderSpanActivationKey(event.key)) return;
+    const element = event.target?.closest?.('[data-reader-interactive="true"][data-analyzer-start][data-analyzer-end]');
+    if (!element || !sentenceBoxRef.current?.contains(element)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    activateAnalyzerElement(element, 'keyboard');
+  }
 
   async function checkAnkiStatus() {
     try { await checkAnkiConnect(); setAnkiStatus({ connected: true, message: 'Connected' }); }
@@ -1114,7 +1184,8 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
               <div ref={sentenceBoxRef}
                 className="sentence-box"
                 lang="ja" style={boxStyle}
-                onMouseUp={handleTextSelection} onDoubleClick={handleTextSelection} onTouchEnd={handleTextSelection}>
+                onMouseUp={handleTextSelection} onDoubleClick={handleTextSelection} onTouchEnd={handleTextSelection}
+                onClick={handleReaderSpanClick} onKeyDown={handleReaderSpanKeyDown}>
                 <div className={`sentence-content ${verticalMode ? 'vertical' : ''} ${hasDialogueColumns ? 'dialogue-columns' : ''}`}>
                   {renderStableSentence({
                     htmlText: currentData.htmlText,
