@@ -5,8 +5,8 @@ import { ReaderShell, ReaderStatusBar, ReaderTopBar, ReaderMainLayout, ReaderSid
 import { ReaderHeader, ReaderNavigation, ReaderSidebarToggle, ReaderSceneFrame } from './reader/ReaderChrome.jsx';
 import { resolveTeachingSelection, teachingSelectionMessage } from '../lib/teachingSelectionResolver.js';
 import { getProgress, saveProgress } from '../lib/storage.js';
-import { checkAnkiConnect, findLatestNote, updateNoteFields, ankiRequest } from '../lib/ankiConnect.js';
-import { autoEnrichWordWithFallback, generateVoicevoxAudio } from '../lib/enrichService.js';
+import { checkAnkiConnect, ankiRequest } from '../lib/ankiConnect.js';
+import { runLatestKikuEnrichment } from '../lib/latestKikuEnrichment.js';
 import { buildCache, clearCache, getCacheSize, getKnownWordAuthority, resolveKnownWordState, addKnownWord, addManualKnownWord, removeManualKnownWord, isManualKnownWord, isKnownWord } from '../lib/wordCache.js';
 import { getFrequency, startLoadingGlobalFrequency } from '../lib/frequencyMap.js';
 import {
@@ -395,6 +395,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   const [lastTeachingReceipt, setLastTeachingReceipt] = useState(null);
   const [analyzerRefreshKey, setAnalyzerRefreshKey] = useState(0);
   const [enrichResult, setEnrichResult] = useState(null);
+  const [enrichmentOperation, setEnrichmentOperation] = useState(null);
   const [isWorking, setIsWorking] = useState(false);
 
   const sentenceBoxRef = useRef(null);
@@ -976,6 +977,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
         lookupIdentity: selectedReaderContext ? getAnalyzerMiningLookupKey(selectedReaderContext) : null,
         debug: miningDebug,
         enrichment: enrichResult,
+        enrichmentOperation,
         working: isWorking
       },
       prefetchTargets: analyzerPrefetchPlan.ordered,
@@ -1001,43 +1003,45 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   async function handleMine() {
     if (!selectedText) { setMiningDebug({ status: 'blocked', stage: 'validation', selectedWord: '', error: 'Select a word first.', updatedAt: new Date().toISOString() }); setStatus({ type: 'error', message: 'Select a word first.' }); return; }
     if (!isText) { setMiningDebug({ status: 'blocked', stage: 'validation', selectedWord: selectedText, error: 'Navigate to text first.', updatedAt: new Date().toISOString() }); setStatus({ type: 'error', message: 'Navigate to text first.' }); return; }
-    const novelSentence = currentData?.plainText || '';
-    const analyzerCandidate = learningOwnership.source === 'jp-analyzer'
-      ? selectedReaderContext
-      : null;
-    if (learningOwnership.source === 'jp-analyzer' && (!analyzerCandidate || analyzerCandidate.eligibleForMining !== true)) {
+    const analyzerCandidate = learningOwnership.source === 'jp-analyzer' ? selectedReaderContext : null;
+    if (!analyzerCandidate || analyzerCandidate.eligibleForMining !== true) {
       const message = selectionIssue || getAnalyzerActionState().miningMessage;
       setMiningDebug({ status: 'blocked', stage: 'eligibility', selectedWord: selectedText, error: message, updatedAt: new Date().toISOString() });
-      setStatus({ type: 'error', message });
-      return;
+      setStatus({ type: 'error', message }); return;
     }
-    const miningLookupKey = analyzerCandidate ? getAnalyzerMiningLookupKey(analyzerCandidate) : selectedText;
-    setMiningDebug({ status: 'running', stage: 'start', startedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), selectedWord: selectedText, miningLookupKey, analyzerMiningSelection: selectedReaderContext, learningSource: learningOwnership.source, noteType, scene: `${itemIndex + 1} / ${totalScenes}`, chapterTitle: currentData?.chapterTitle || '', novelSentence });
-    setIsWorking(true); setEnrichResult(null); setStatus({ type: 'working', message: 'Connecting to Anki...' });
+    const miningLookupKey = getAnalyzerMiningLookupKey(analyzerCandidate);
+    setIsWorking(true); setEnrichResult(null); setEnrichmentOperation(null); setStatus({ type: 'working', message: 'Preparing pinned Kiku enrichment...' });
     try {
-      updateMiningDebug({ status: 'running', stage: 'checkAnkiConnect' }); await checkAnkiConnect();
-      setStatus({ type: 'working', message: 'Finding latest note...' }); updateMiningDebug({ status: 'running', stage: 'findLatestNote' });
-      const noteResult = await findLatestNote(noteType);
-      updateMiningDebug({ latestNoteQuery: noteResult.query, latestNoteCount: noteResult.ids?.length ?? 0, latestNoteId: noteResult.note?.noteId || '' });
-      if (!noteResult.note) { updateMiningDebug({ status: 'error', stage: 'findLatestNote', error: 'No Kiku note found.' }); setStatus({ type: 'error', message: 'No Kiku note found.' }); setIsWorking(false); return; }
-      const noteId = noteResult.note.noteId;
-      updateMiningDebug({ status: 'running', stage: 'enrichment' });
-      const result = await autoEnrichWordWithFallback(miningLookupKey, novelSentence, ankiRequest, noteType, msg => { updateMiningDebug({ status: 'running', stage: msg }); setStatus({ type: 'working', message: msg }); });
-      setEnrichResult(result);
-      updateMiningDebug({ status: 'running', stage: 'enrichmentComplete', enrichmentMethod: result.method || '', source: result.source || '', mode: result.mode || '', unknownCount: result.unknownCount ?? null, chosenSentence: result.sentence || '', sentenceFurigana: result.sentenceFurigana || '', hasAudioUrl: Boolean(result.audioUrl), hasImageUrl: Boolean(result.imageUrl), audioUrl: result.audioUrl || '', imageUrl: result.imageUrl || '' });
-      setStatus({ type: 'working', message: 'Downloading media...' });
-      const fieldUpdates = { [fields.sentence]: result.sentence, [fields.sentenceFurigana]: result.sentenceFurigana || result.sentence, [fields.miscInfo]: [cleanedTitle, currentData?.chapterTitle || ''].filter(Boolean).join(' · ') };
-      if (result.method !== 'voicevox') fieldUpdates[fields.selectionText] = novelSentence;
-      if (result.method === 'voicevox') { try { updateMiningDebug({ status: 'running', stage: 'voicevoxAudio' }); const { audioBase64, filename } = await generateVoicevoxAudio(novelSentence); await ankiRequest('storeMediaFile', { filename, data: audioBase64 }); fieldUpdates[fields.sentenceAudio] = `[sound:${filename}]`; updateMiningDebug({ sentenceAudio: `[sound:${filename}]` }); } catch (err) { updateMiningDebug({ voicevoxError: err?.message || String(err) }); } }
-      else if (result.audioUrl) { try { updateMiningDebug({ status: 'running', stage: 'nadeshikoAudio' }); const filename = `nade_audio_${Date.now()}.mp3`; await ankiRequest('storeMediaFile', { filename, url: result.audioUrl }); fieldUpdates[fields.sentenceAudio] = `[sound:${filename}]`; updateMiningDebug({ sentenceAudio: `[sound:${filename}]` }); } catch (e) { updateMiningDebug({ audioError: e?.message || String(e) }); } }
-      if (result.method !== 'voicevox' && result.imageUrl) { try { updateMiningDebug({ status: 'running', stage: 'nadeshikoImage' }); const filename = `nade_img_${Date.now()}.jpg`; await ankiRequest('storeMediaFile', { filename, url: result.imageUrl }); fieldUpdates[fields.picture] = `<img src="${filename}">`; updateMiningDebug({ picture: `<img src="${filename}">` }); } catch (e) { updateMiningDebug({ imageError: e?.message || String(e) }); } }
-      updateMiningDebug({ status: 'running', stage: 'updateNoteFields', preparedFields: fieldUpdates }); await updateNoteFields(noteId, fieldUpdates);
-      if (analyzerCandidate?.knownLookupKey) addKnownWord(miningLookupKey); setCacheVersion(v => v + 1); try { await ankiRequest('guiBrowse', { query: `nid:${noteId}` }); } catch (e) {}
-      updateMiningDebug({ status: 'completed', stage: 'done', updatedNoteId: noteId, preparedFields: fieldUpdates }); setStatus({ type: 'ok', message: `Card updated — ${result.source}${result.mode ? ` (${result.mode})` : ''}` });
-    } catch (err) { updateMiningDebug({ status: 'error', stage: 'failed', error: err?.message || String(err) }); setStatus({ type: 'error', message: err?.message || String(err) }); }
-    setIsWorking(false);
+      const operation = await runLatestKikuEnrichment({
+        lookupIdentity: miningLookupKey,
+        readerInteraction: selectedReaderContext,
+        sceneIdentity: `${book.id}:${itemIndex}`,
+        chapterIdentity: currentData?.chapterIndex ?? null,
+        noteType,
+        expressionField: 'Expression',
+        novelSentence: currentData?.plainText || '',
+        bookTitle: cleanedTitle,
+        chapterTitle: currentData?.chapterTitle || '',
+        fields,
+        onEvent: event => {
+          setEnrichmentOperation(event);
+          setMiningDebug(event);
+          if (event.stage === 'targetPinned') {
+            const suffix = event.comparison?.warning ? ` Warning: ${event.comparison.warning}` : '';
+            setStatus({ type: event.comparison?.warning ? 'working' : 'working', message: `Pinned note #${event.pinnedTarget.noteId}: ${event.pinnedTarget.expression || '(expression unavailable)'}.${suffix}` });
+          } else if (event.status === 'running') setStatus({ type: 'working', message: `Enrichment: ${event.stage}` });
+        }
+      });
+      setEnrichResult(operation.result);
+      if (analyzerCandidate.knownLookupKey) addKnownWord(miningLookupKey);
+      setCacheVersion(value => value + 1);
+      setStatus({ type: operation.comparison.warning ? 'ok' : 'ok', message: `Card #${operation.pinnedTarget.noteId} updated — ${operation.result.source}${operation.comparison.warning ? ` · ${operation.comparison.warning}` : ''}` });
+    } catch (error) {
+      const failed = error?.enrichmentOperation || null;
+      if (failed) { setEnrichmentOperation(failed); setMiningDebug(failed); }
+      setStatus({ type: 'error', message: error?.message || String(error) });
+    } finally { setIsWorking(false); }
   }
-
   const boxStyle = {
     fontSize: `${readerStyle.fontSize}px`, lineHeight: readerStyle.lineHeight,
     fontFamily: FONT_STACKS[readerStyle.fontFamily] || FONT_STACKS.mincho
@@ -1250,6 +1254,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 {isWorking && <span className="mine-status">Working...</span>}
+                {enrichmentOperation?.pinnedTarget && <span className={`mine-status ${enrichmentOperation.comparison?.status === 'mismatch' ? 'warning' : ''}`} title={enrichmentOperation.comparison?.warning || ''}>Target #{enrichmentOperation.pinnedTarget.noteId} · {enrichmentOperation.pinnedTarget.expression || 'expression unavailable'}</span>}
                 {enrichResult && !isWorking && <span className="mine-status" style={{ color: 'var(--success)' }}>✓ {enrichResult.source}</span>}
                 {(() => {
                   const action = getAnalyzerActionState();

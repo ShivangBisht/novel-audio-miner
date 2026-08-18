@@ -127,6 +127,7 @@ export function buildDebugReportV2({
       lookupIdentity: mining?.lookupIdentity || null,
       debug: clone(mining?.debug || null),
       enrichment: clone(mining?.enrichment || null),
+      enrichmentOperation: clone(mining?.enrichmentOperation || null),
       working: Boolean(mining?.working)
     },
     epub: {

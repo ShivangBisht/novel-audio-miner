@@ -472,3 +472,8 @@ Alpha 3 adds click, tap, and keyboard activation for exact authoritative Reader 
 ## Alpha 4 known-word authority
 
 Alpha 4 separates Anki-derived, manual-known, and effective union state. Cache readiness, completeness, refresh time, counts, failures, and indeterminate unknown state are explicit. Missing or partial cache data is not treated as confirmed unknown vocabulary.
+
+
+## Alpha 5 latest-Kiku-note enrichment
+
+Alpha 5 extracts enrichment orchestration, discovers the latest configured Kiku note once, pins its identity throughout the operation, previews the target expression, warns on canonical lookup mismatch, and prevents mid-operation retargeting.
