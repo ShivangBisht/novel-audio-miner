@@ -477,3 +477,8 @@ Alpha 4 separates Anki-derived, manual-known, and effective union state. Cache r
 ## Alpha 5 latest-Kiku-note enrichment
 
 Alpha 5 extracts enrichment orchestration, discovers the latest configured Kiku note once, pins its identity throughout the operation, previews the target expression, warns on canonical lookup mismatch, and prevents mid-operation retargeting.
+
+
+## Alpha 6 status and integration authority
+
+Alpha 6 replaces shared Reader status with immutable domain-owned selection, known-word, enrichment, Teaching, correction, analyzer, dictionary, AnkiConnect, and startup status snapshots. Cross-domain overwriting is eliminated and Debug Report v2 retains all domains.

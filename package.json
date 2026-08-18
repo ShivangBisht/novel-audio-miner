@@ -67,7 +67,8 @@
     "test:alpha2": "npm run validate:alpha1 && node scripts/test-alpha2-reader-interaction.mjs && npm run test:analyzer-learning-model && npm run test:analyzer-learning-activation && npm run test:analyzer-mining-selection && npm run test:analyzer-selection-ownership && npm run test:phase15.4",
     "test:alpha3": "npm run test:alpha2 && node scripts/test-alpha3-selection-interaction.mjs",
     "test:alpha4": "npm run test:alpha3 && node scripts/test-alpha4-known-word-authority.mjs",
-    "test:alpha5": "npm run test:alpha4 && node scripts/test-alpha5-latest-kiku-enrichment.mjs"
+    "test:alpha5": "npm run test:alpha4 && node scripts/test-alpha5-latest-kiku-enrichment.mjs",
+    "test:alpha6": "npm run test:alpha5 && node scripts/test-alpha6-status-authority.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.3",

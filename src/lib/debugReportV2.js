@@ -45,7 +45,7 @@ export function buildDebugReportV2({
   application = {}, book = null, reader = {}, scene = {}, adjacentScenes = [],
   analyzerShadow = {}, analyzerReader = {}, analyzerResult = null,
   metadataLease = null, metadataLeaseMs = null,
-  presentationSpans = [], learning = {}, selection = {}, mining = {},
+  presentationSpans = [], learning = {}, selection = {}, mining = {}, statusDomains = {},
   prefetchTargets = [], analyzerObservability = null,
   includeFullParserInventory = false, now = new Date()
 } = {}) {
@@ -109,6 +109,7 @@ export function buildDebugReportV2({
       targets: clone(prefetchTargets)
     },
     analyzerObservability: clone(analyzerObservability),
+    statusDomains: clone(statusDomains),
     presentation: { spans: clone(presentationSpans) },
     learning: {
       available: Boolean(learning?.available),

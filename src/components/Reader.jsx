@@ -28,6 +28,8 @@ import { resolveCanonicalReaderInteractionFromReference } from '../lib/readerInt
 import { interactionMatchesAnalyzerElement, isReaderSpanActivationKey, readAnalyzerElementIdentity } from '../lib/readerSpanInteraction.js';
 import { buildDebugReportV2, buildDiagnosticSummaryV2 } from '../lib/debugReportV2.js';
 import { buildSanitizedAnalyzerObservability } from '../lib/analyzerObservability.js';
+import ReaderDomainStatus from './ReaderDomainStatus.jsx';
+import { createStatusRegistry, createDomainStatus, projectAnalyzerStatus, projectAnkiStatus, projectKnownWordStatus, updateStatusDomain } from '../lib/operationStatus.js';
 import { ANALYZER_METADATA_LEASE_MS, getAnalyzerMetadataLease } from '../lib/analyzerMetadataLease.js';
 import {
   COLOR_SOURCES,
@@ -369,7 +371,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   const [sidebarOpen, setSidebarOpen] = useState(() => saved.sidebarOpen ?? true);
   const [showStyle, setShowStyle] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
-  const [ankiStatus, setAnkiStatus] = useState({ connected: false, message: 'Not checked' });
+  const [ankiStatus, setAnkiStatus] = useState({ connected: false, phase: 'unchecked', message: 'Not checked' });
   const [cacheVersion, setCacheVersion] = useState(0);
   const knownWordAuthority = useMemo(() => getKnownWordAuthority(), [cacheVersion]);
   const [globalFreqReady, setGlobalFreqReady] = useState(false);
@@ -387,7 +389,14 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   const [miningDebug, setMiningDebug] = useState(null);
   const [unblurredImages, setUnblurredImages] = useState(new Set());
   const [goInput, setGoInput] = useState('');
-  const [status, setStatus] = useState({ type: '', message: '' });
+  const [statusDomains, setStatusDomains] = useState(() => createStatusRegistry({
+    dictionary: createDomainStatus('dictionary', { phase: 'external', severity: 'info', message: 'Dictionary status is owned by Dictionary Management.', owner: 'dictionary-management' }),
+    startup: createDomainStatus('startup', { phase: 'external', severity: 'info', message: 'Startup status is owned by the application supervisor.', owner: 'application-status' }),
+    teaching: createDomainStatus('teaching', { phase: 'idle', owner: 'teaching' })
+  }));
+  function publishStatus(domain, phase, severity, message, details = null, options = {}) {
+    setStatusDomains(current => updateStatusDomain(current, domain, { phase, severity, message, details, ...options }));
+  }
   const [teachingMode, setTeachingMode] = useState(false);
   const [teachingSelection, setTeachingSelection] = useState(null);
   const [teachingAnalysis, setTeachingAnalysis] = useState(null);
@@ -489,6 +498,9 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
 
   const comprehension = learningOwnership.comprehension;
   const unknownWords = learningOwnership.newWords;
+  useEffect(() => { setStatusDomains(current => ({ ...current, analyzer: projectAnalyzerStatus(jpAnalyzerShadow, jpAnalyzerReader.valid) })); }, [jpAnalyzerShadow?.status, jpAnalyzerShadow?.error, jpAnalyzerShadow?.source, jpAnalyzerShadow?.cacheReason, jpAnalyzerShadow?.prefetchStatus, jpAnalyzerReader.valid]);
+  useEffect(() => { setStatusDomains(current => ({ ...current, 'known-word': projectKnownWordStatus(knownWordAuthority) })); }, [knownWordAuthority]);
+  useEffect(() => { setStatusDomains(current => ({ ...current, 'anki-connect': projectAnkiStatus(ankiStatus) })); }, [ankiStatus]);
 
   const chapterStarts = useMemo(() => {
     const starts = new Map();
@@ -625,15 +637,16 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   }
 
   async function checkAnkiStatus() {
-    try { await checkAnkiConnect(); setAnkiStatus({ connected: true, message: 'Connected' }); }
-    catch { setAnkiStatus({ connected: false, message: 'Not connected' }); }
+    setAnkiStatus({ connected: false, phase: 'checking', message: 'Checking AnkiConnect...' });
+    try { await checkAnkiConnect(); setAnkiStatus({ connected: true, phase: 'connected', message: 'Connected' }); }
+    catch { setAnkiStatus({ connected: false, phase: 'offline', message: 'Not connected' }); }
   }
 
   async function loadData() {
     try {
       if (getCacheSize() === 0) await buildCache(ankiRequest);
       startLoadingGlobalFrequency().then(() => setGlobalFreqReady(true));
-    } catch (e) { console.error('[Reader] Data load error:', e); setStatus({ type: 'error', message: e?.message || 'Known-word cache failed to load.' }); }
+    } catch (e) { console.error('[Reader] Data load error:', e); publishStatus('known-word', 'failed', 'error', e?.message || 'Known-word cache failed to load.', null, { recoverable: true, recoveryAction: 'Rebuild Anki cache' }); }
     setCacheVersion(v => v + 1);
   }
 
@@ -645,7 +658,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     teachingAnalysisRequestRef.current += 1;
     setTeachingSelection(null);
     setTeachingAnalysis(null);
-    setStatus({ type: 'working', message: `Correction revision ${result.correctionRevisionAfter || 'updated'}; refreshing reader analysis...` });
+    publishStatus('correction', 'refreshing', 'working', `Correction revision ${result.correctionRevisionAfter || 'updated'}; refreshing reader analysis...`, result);
   }
 
   function handleTextSelection() {
@@ -670,10 +683,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
             expectedText: currentData?.plainText || ''
           });
           if (!domSelection.valid) {
-            setStatus({
-              type: 'error',
-              message: domVisualSelectionMessage(domSelection)
-            });
+            publishStatus('teaching', 'selection-failed', 'error', domVisualSelectionMessage(domSelection), domSelection, { recoverable: true, recoveryAction: 'Select one logical sentence' });
             return;
           }
 
@@ -684,17 +694,11 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
             visibleText: domSelection.visibleText
           });
           if (!logicalSelection.valid) {
-            setStatus({
-              type: 'error',
-              message: logicalSentenceSelectionMessage(logicalSelection)
-            });
+            publishStatus('teaching', 'selection-failed', 'error', logicalSentenceSelectionMessage(logicalSelection), logicalSelection, { recoverable: true, recoveryAction: 'Select one logical sentence' });
             return;
           }
 
-          setStatus({
-            type: 'working',
-            message: 'Preparing sentence-local Teaching analysis...'
-          });
+          publishStatus('teaching', 'analyzing', 'working', 'Preparing sentence-local Teaching analysis...', { type: 'working', message: 'Preparing sentence-local Teaching analysis...' });
 
           try {
             const analyzerRecord = await analyzeJpAnalyzerSentenceOnDemand(
@@ -707,27 +711,18 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
               analyzerRecord
             });
             if (!qualified.valid) {
-              setStatus({
-                type: 'error',
-                message: logicalTeachingQualificationMessage(qualified)
-              });
+              publishStatus('teaching', 'qualification-failed', 'error', logicalTeachingQualificationMessage(qualified), qualified);
               return;
             }
 
             setTeachingSelection(qualified.selection);
             setTeachingAnalysis(qualified.analysis);
-            setStatus({
-              type: 'ok',
-              message: teachingSelectionMessage(qualified.selection)
-            });
+            publishStatus('teaching', 'ready', 'success', teachingSelectionMessage(qualified.selection));
           } catch (error) {
             if (teachingAnalysisRequestRef.current !== requestId) return;
             setTeachingSelection(null);
             setTeachingAnalysis(null);
-            setStatus({
-              type: 'error',
-              message: error?.message || 'Sentence-local Teaching analysis failed.'
-            });
+            publishStatus('teaching', 'failed', 'error', error?.message || 'Sentence-local Teaching analysis failed.', null, { recoverable: true, recoveryAction: 'Retry Teaching selection' });
             return;
           }
         } else {
@@ -739,7 +734,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
           });
           setTeachingAnalysis(null);
           setTeachingSelection(result.valid ? result : null);
-          setStatus({ type: result.valid ? 'ok' : 'error', message: teachingSelectionMessage(result) });
+          publishStatus('teaching', result.valid ? 'ready' : 'selection-failed', result.valid ? 'success' : 'error', teachingSelectionMessage(result), result);
           if (!result.valid) return;
         }
       }
@@ -834,13 +829,13 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
       ? String(interaction?.knownLookupKey || '').trim()
       : getPrimaryKnownKey(target, interaction);
     if (!primary) {
-      setStatus({ type: 'error', message: 'This analyzer span has no vocabulary known-word identity.' });
+      publishStatus('known-word', 'mutation-blocked', 'error', 'This analyzer span has no vocabulary known-word identity.');
       return;
     }
     addManualKnownWord(primary);
     setSelectedText(primary);
     setCacheVersion(v => v + 1);
-    setStatus({ type: 'ok', message: `Marked ${primary} as known.` });
+    publishStatus('known-word', 'mutation-complete', 'success', `Marked ${primary} as known.`);
   }
 
   function handleUndoKnown(word, interaction = selectedReaderContext) {
@@ -851,16 +846,16 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     setSelectedText(target);
     setCacheVersion(v => v + 1);
     if (removed.length > 0) {
-      setStatus({ type: 'ok', message: `Removed manual-known status for ${removed.join(', ')}.` });
+      publishStatus('known-word', 'mutation-complete', 'success', `Removed manual-known status for ${removed.join(', ')}.`);
     } else {
-      setStatus({ type: 'error', message: `${target} was not found in manual known words. It may be known from Anki.` });
+      publishStatus('known-word', 'mutation-blocked', 'warning', `${target} was not found in manual known words. It may be known from Anki.`);
     }
   }
   function handleMarkKnownForNewWord(newWord) {
     const resolution = resolveNewWordInteraction(newWord);
     if (!resolution.valid) {
       setSelectionIssue('This New Words entry no longer matches the current authoritative analyzer span.');
-      setStatus({ type: 'error', message: 'Could not resolve the current authoritative New Words span.' });
+      publishStatus('selection', 'stale-reference', 'error', 'Could not resolve the current authoritative New Words span.', null, { recoverable: true, recoveryAction: 'Reselect the word in the Reader' });
       return;
     }
     setSelectedReaderContext(resolution.context);
@@ -972,6 +967,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
         actionState,
         issue: selectionIssue || null
       },
+      statusDomains,
       mining: {
         candidate: selectedReaderContext?.eligibleForMining ? selectedReaderContext : null,
         lookupIdentity: selectedReaderContext ? getAnalyzerMiningLookupKey(selectedReaderContext) : null,
@@ -1001,16 +997,16 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   }
 
   async function handleMine() {
-    if (!selectedText) { setMiningDebug({ status: 'blocked', stage: 'validation', selectedWord: '', error: 'Select a word first.', updatedAt: new Date().toISOString() }); setStatus({ type: 'error', message: 'Select a word first.' }); return; }
-    if (!isText) { setMiningDebug({ status: 'blocked', stage: 'validation', selectedWord: selectedText, error: 'Navigate to text first.', updatedAt: new Date().toISOString() }); setStatus({ type: 'error', message: 'Navigate to text first.' }); return; }
+    if (!selectedText) { setMiningDebug({ status: 'blocked', stage: 'validation', selectedWord: '', error: 'Select a word first.', updatedAt: new Date().toISOString() }); publishStatus('selection', 'required', 'error', 'Select a word first.'); return; }
+    if (!isText) { setMiningDebug({ status: 'blocked', stage: 'validation', selectedWord: selectedText, error: 'Navigate to text first.', updatedAt: new Date().toISOString() }); publishStatus('selection', 'not-text', 'error', 'Navigate to text first.'); return; }
     const analyzerCandidate = learningOwnership.source === 'jp-analyzer' ? selectedReaderContext : null;
     if (!analyzerCandidate || analyzerCandidate.eligibleForMining !== true) {
       const message = selectionIssue || getAnalyzerActionState().miningMessage;
       setMiningDebug({ status: 'blocked', stage: 'eligibility', selectedWord: selectedText, error: message, updatedAt: new Date().toISOString() });
-      setStatus({ type: 'error', message }); return;
+      publishStatus('selection', 'not-eligible', 'error', message); return;
     }
     const miningLookupKey = getAnalyzerMiningLookupKey(analyzerCandidate);
-    setIsWorking(true); setEnrichResult(null); setEnrichmentOperation(null); setStatus({ type: 'working', message: 'Preparing pinned Kiku enrichment...' });
+    setIsWorking(true); setEnrichResult(null); setEnrichmentOperation(null); publishStatus('enrichment', 'preparing', 'working', 'Preparing pinned Kiku enrichment...');
     try {
       const operation = await runLatestKikuEnrichment({
         lookupIdentity: miningLookupKey,
@@ -1028,18 +1024,18 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
           setMiningDebug(event);
           if (event.stage === 'targetPinned') {
             const suffix = event.comparison?.warning ? ` Warning: ${event.comparison.warning}` : '';
-            setStatus({ type: event.comparison?.warning ? 'working' : 'working', message: `Pinned note #${event.pinnedTarget.noteId}: ${event.pinnedTarget.expression || '(expression unavailable)'}.${suffix}` });
-          } else if (event.status === 'running') setStatus({ type: 'working', message: `Enrichment: ${event.stage}` });
+            publishStatus('enrichment', 'target-pinned', event.comparison?.warning ? 'warning' : 'working', `Pinned note #${event.pinnedTarget.noteId}: ${event.pinnedTarget.expression || '(expression unavailable)'}.${suffix}`, event, { operationId: event.operationId });
+          } else if (event.status === 'running') publishStatus('enrichment', event.stage, 'working', `Enrichment: ${event.stage}`, event, { operationId: event.operationId });
         }
       });
       setEnrichResult(operation.result);
       if (analyzerCandidate.knownLookupKey) addKnownWord(miningLookupKey);
       setCacheVersion(value => value + 1);
-      setStatus({ type: operation.comparison.warning ? 'ok' : 'ok', message: `Card #${operation.pinnedTarget.noteId} updated — ${operation.result.source}${operation.comparison.warning ? ` · ${operation.comparison.warning}` : ''}` });
+      publishStatus('enrichment', 'completed', operation.comparison.warning ? 'warning' : 'success', `Card #${operation.pinnedTarget.noteId} updated — ${operation.result.source}${operation.comparison.warning ? ` · ${operation.comparison.warning}` : ''}`, operation, { operationId: operation.operationId });
     } catch (error) {
       const failed = error?.enrichmentOperation || null;
       if (failed) { setEnrichmentOperation(failed); setMiningDebug(failed); }
-      setStatus({ type: 'error', message: error?.message || String(error) });
+      publishStatus('enrichment', 'failed', 'error', error?.message || String(error), failed, { operationId: failed?.operationId || null, recoverable: true, recoveryAction: 'Verify Anki and retry enrichment' });
     } finally { setIsWorking(false); }
   }
   const boxStyle = {
@@ -1204,7 +1200,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
                   })}
                 </div>
               </div>
-              {status.message && <div className={`status-message ${status.type}`} style={{ marginTop: '8px' }}>{status.message}</div>}
+              <ReaderDomainStatus registry={statusDomains} />
               {teachingMode && teachingSelection?.valid && (
                 <div className="teaching-drawer-layer">
                   <TeachingPanel
@@ -1241,7 +1237,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
                   {!unblurredImages.has(currentData.dataUri) && <div className="unblur-btn">Click to reveal</div>}
                 </div>
                 {currentData.alt && unblurredImages.has(currentData.dataUri) && <div className="image-caption">{currentData.alt}</div>}
-                {status.message && <div className={`status-message ${status.type}`} style={{ marginTop: '8px' }}>{status.message}</div>}
+                <ReaderDomainStatus registry={statusDomains} />
               </div>
             </ReaderSceneFrame>
           )}
@@ -1302,7 +1298,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
               </label>
               <label style={{ fontSize: '11px', color: 'var(--muted)', display: 'grid', gap: '4px' }}>Session Token: <input value={sessionToken} onChange={e => handleSaveSessionToken(e.target.value)} placeholder="Paste __Secure-nadeshiko.session_token" /><span style={{ fontSize: '10px' }}>F12 → Application → Cookies → nadeshiko.co</span></label>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                <button className="secondary" onClick={async () => { try { await buildCache(ankiRequest); setCacheVersion(v => v + 1); } catch (error) { setCacheVersion(v => v + 1); setStatus({ type: 'error', message: error?.message || 'Known-word cache rebuild failed.' }); } }} style={{ fontSize: '10px', padding: '4px 8px' }}>Rebuild Cache</button>
+                <button className="secondary" onClick={async () => { try { await buildCache(ankiRequest); setCacheVersion(v => v + 1); } catch (error) { setCacheVersion(v => v + 1); publishStatus('known-word', 'failed', 'error', error?.message || 'Known-word cache rebuild failed.', null, { recoverable: true, recoveryAction: 'Verify AnkiConnect and rebuild cache' }); } }} style={{ fontSize: '10px', padding: '4px 8px' }}>Rebuild Cache</button>
                 <button className="secondary" onClick={() => { clearCache(); setCacheVersion(v => v + 1); }} style={{ fontSize: '10px', padding: '4px 8px' }}>Clear Anki Cache</button>
                 <button className="secondary" onClick={toggleForceTts} style={{ fontSize: '10px', padding: '4px 8px', background: forceTts ? 'var(--warning)' : undefined }}>Force TTS: {forceTts ? 'ON' : 'OFF'}</button>
                 <button className="secondary" onClick={() => setDebugMode(v => !v)} style={{ fontSize: '10px', padding: '4px 8px', background: debugMode ? 'var(--accent)' : undefined }}>Debug Mode: {debugMode ? 'ON' : 'OFF'}</button>
