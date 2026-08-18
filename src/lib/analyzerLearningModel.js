@@ -1,6 +1,6 @@
 /** Phase 5.1: pure, read-only learning projection from validated readerSpans. */
 import { createReaderSpanReference } from './readerInteractionContext.js';
-export function buildAnalyzerLearningModel(words, { isKnown = () => false, getFrequency = () => null } = {}) {
+export function buildAnalyzerLearningModel(words, { isKnown = () => false, resolveKnownState = key => ({ effective: isKnown(key), confirmedUnknown: !isKnown(key), indeterminate: false }), getFrequency = () => null } = {}) {
   const spans = Array.isArray(words) ? words : [];
   const comprehensionSpans = [];
   const newWords = [];
@@ -13,9 +13,9 @@ export function buildAnalyzerLearningModel(words, { isKnown = () => false, getFr
     if (!span || span.analysisSource !== 'jp-analyzer-reader-spans') continue;
     if (span.countsForComprehension) {
       const key = requiredKey(span.knownLookupKey, span, 'countsForComprehension');
-      const knownState = isKnown(key);
-      if (knownState) known += 1;
-      comprehensionSpans.push(copySpan(span, { key, known: knownState }));
+      const knownState = resolveKnownState(key);
+      if (knownState.effective) known += 1;
+      comprehensionSpans.push(copySpan(span, { key, known: knownState.effective, knownState }));
     } else {
       const role = span.displayRole || 'missing';
       excludedByRole[role] = (excludedByRole[role] || 0) + 1;
@@ -23,10 +23,11 @@ export function buildAnalyzerLearningModel(words, { isKnown = () => false, getFr
 
     if (span.showInNewWords) {
       const key = requiredKey(span.knownLookupKey, span, 'showInNewWords');
-      if (!isKnown(key) && !seenNewWords.has(key)) {
+      const knownState = resolveKnownState(key);
+      if (knownState.confirmedUnknown && !seenNewWords.has(key)) {
         seenNewWords.add(key);
         const frequencyKey = optionalKey(span.frequencyLookupKey);
-        newWords.push(copySpan(span, { key, frequencyKey, frequency: frequencyKey ? getFrequency(frequencyKey) : null }));
+        newWords.push(copySpan(span, { key, knownState, frequencyKey, frequency: frequencyKey ? getFrequency(frequencyKey) : null }));
       }
     }
 

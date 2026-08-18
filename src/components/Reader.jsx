@@ -7,7 +7,7 @@ import { resolveTeachingSelection, teachingSelectionMessage } from '../lib/teach
 import { getProgress, saveProgress } from '../lib/storage.js';
 import { checkAnkiConnect, findLatestNote, updateNoteFields, ankiRequest } from '../lib/ankiConnect.js';
 import { autoEnrichWordWithFallback, generateVoicevoxAudio } from '../lib/enrichService.js';
-import { buildCache, clearCache, getCacheSize, addKnownWord, addManualKnownWord, removeManualKnownWord, isManualKnownWord, isKnownWord } from '../lib/wordCache.js';
+import { buildCache, clearCache, getCacheSize, getKnownWordAuthority, resolveKnownWordState, addKnownWord, addManualKnownWord, removeManualKnownWord, isManualKnownWord, isKnownWord } from '../lib/wordCache.js';
 import { getFrequency, startLoadingGlobalFrequency } from '../lib/frequencyMap.js';
 import {
   analyzeJpAnalyzerSentenceOnDemand,
@@ -371,6 +371,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   const [toolsOpen, setToolsOpen] = useState(false);
   const [ankiStatus, setAnkiStatus] = useState({ connected: false, message: 'Not checked' });
   const [cacheVersion, setCacheVersion] = useState(0);
+  const knownWordAuthority = useMemo(() => getKnownWordAuthority(), [cacheVersion]);
   const [globalFreqReady, setGlobalFreqReady] = useState(false);
   const [sessionToken, setSessionToken] = useState(() => { try { return localStorage.getItem('nadeshiko_session_token') || ''; } catch { return ''; } });
   const [forceTts, setForceTts] = useState(() => { try { return localStorage.getItem('force_tts') === 'true'; } catch { return false; } });
@@ -471,6 +472,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     try {
       return buildAnalyzerLearningModel(jpAnalyzerReader.words, {
         isKnown: isKnownWord,
+        resolveKnownState: resolveKnownWordState,
         getFrequency
       });
     } catch (error) {
@@ -630,7 +632,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     try {
       if (getCacheSize() === 0) await buildCache(ankiRequest);
       startLoadingGlobalFrequency().then(() => setGlobalFreqReady(true));
-    } catch (e) { console.error('[Reader] Data load error:', e); }
+    } catch (e) { console.error('[Reader] Data load error:', e); setStatus({ type: 'error', message: e?.message || 'Known-word cache failed to load.' }); }
     setCacheVersion(v => v + 1);
   }
 
@@ -819,7 +821,8 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   function getAnalyzerActionState() {
     return getAnalyzerSelectionActionState(selectedReaderContext, {
       isKnown: isKnownWord,
-      isManualKnown: isManualKnownWord
+      isManualKnown: isManualKnownWord,
+      resolveKnownState: resolveKnownWordState
     });
   }
 
@@ -914,6 +917,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
         verticalMode: Boolean(verticalMode),
         readerStyle,
         ankiStatus,
+        knownWordAuthority,
         globalFreqReady: Boolean(globalFreqReady),
         forceTts: Boolean(forceTts)
       },
@@ -1064,7 +1068,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
           )}
         </div>
         <div className="status-right">
-          <span>{getCacheSize()} known</span>
+          <span title={`Anki ${knownWordAuthority.ankiCount} · Manual ${knownWordAuthority.manualCount} · ${knownWordAuthority.phase}`}>{getCacheSize()} known · {knownWordAuthority.phase}</span>
           <span>·</span>
           <span>{!globalFreqReady ? 'Freq loading...' : forceTts ? 'VOICEVOX' : 'Nadeshiko'}</span>
           <span>·</span>
@@ -1293,7 +1297,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
               </label>
               <label style={{ fontSize: '11px', color: 'var(--muted)', display: 'grid', gap: '4px' }}>Session Token: <input value={sessionToken} onChange={e => handleSaveSessionToken(e.target.value)} placeholder="Paste __Secure-nadeshiko.session_token" /><span style={{ fontSize: '10px' }}>F12 → Application → Cookies → nadeshiko.co</span></label>
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                <button className="secondary" onClick={async () => { try { await buildCache(ankiRequest); setCacheVersion(v => v + 1); } catch {} }} style={{ fontSize: '10px', padding: '4px 8px' }}>Rebuild Cache</button>
+                <button className="secondary" onClick={async () => { try { await buildCache(ankiRequest); setCacheVersion(v => v + 1); } catch (error) { setCacheVersion(v => v + 1); setStatus({ type: 'error', message: error?.message || 'Known-word cache rebuild failed.' }); } }} style={{ fontSize: '10px', padding: '4px 8px' }}>Rebuild Cache</button>
                 <button className="secondary" onClick={() => { clearCache(); setCacheVersion(v => v + 1); }} style={{ fontSize: '10px', padding: '4px 8px' }}>Clear Anki Cache</button>
                 <button className="secondary" onClick={toggleForceTts} style={{ fontSize: '10px', padding: '4px 8px', background: forceTts ? 'var(--warning)' : undefined }}>Force TTS: {forceTts ? 'ON' : 'OFF'}</button>
                 <button className="secondary" onClick={() => setDebugMode(v => !v)} style={{ fontSize: '10px', padding: '4px 8px', background: debugMode ? 'var(--accent)' : undefined }}>Debug Mode: {debugMode ? 'ON' : 'OFF'}</button>

@@ -99,7 +99,7 @@ export function resolveAnalyzerReaderContextForOffsets(spans, selectionStart, se
   );
 }
 
-export function getAnalyzerSelectionActionState(context, { isKnown = () => false, isManualKnown = () => false } = {}) {
+export function getAnalyzerSelectionActionState(context, { isKnown = () => false, isManualKnown = () => false, resolveKnownState = key => ({ effective: isKnown(key), manual: isManualKnown(key), anki: isKnown(key) && !isManualKnown(key), confirmedUnknown: !isKnown(key), indeterminate: false }) } = {}) {
   if (!context) {
     return {
       canMarkKnown: false, canUndoKnown: false, knownFromAnki: false, canMine: false,
@@ -108,13 +108,15 @@ export function getAnalyzerSelectionActionState(context, { isKnown = () => false
     };
   }
   const knownKey = String(context.knownLookupKey ?? '').trim();
-  const manualKnown = Boolean(knownKey && isManualKnown(knownKey));
-  const known = Boolean(knownKey && isKnown(knownKey));
+  const knownState = knownKey ? resolveKnownState(knownKey) : { effective:false, manual:false, anki:false, confirmedUnknown:false, indeterminate:false };
+  const manualKnown = Boolean(knownState.manual);
+  const known = Boolean(knownState.effective);
   const canMine = context.eligibleForMining === true;
   return {
-    canMarkKnown: Boolean(knownKey && !known),
+    canMarkKnown: Boolean(knownKey && !known && (knownState.confirmedUnknown || knownState.indeterminate)),
     canUndoKnown: manualKnown,
-    knownFromAnki: Boolean(known && !manualKnown),
+    knownFromAnki: Boolean(knownState.anki && !manualKnown),
+    knownState,
     canMine,
     knownKey,
     miningMessage: canMine ? '' : 'This analyzer span is not eligible for mining.',

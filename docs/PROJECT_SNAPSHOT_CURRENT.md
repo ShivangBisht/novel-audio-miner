@@ -467,3 +467,8 @@ identity. Teaching range contracts and backend contracts remain unchanged.
 ## Alpha 3 selection interaction
 
 Alpha 3 adds click, tap, and keyboard activation for exact authoritative Reader spans, persistent canonical-span highlighting, accessible focus, and Escape-to-clear. Native drag remains available for copying and existing Teaching ranges. JP Analyzer contracts, New Words authority, known-word persistence, Teaching, contextual scenes, EPUB parsing, enrichment, dictionaries, and prefetch remain unchanged.
+
+
+## Alpha 4 known-word authority
+
+Alpha 4 separates Anki-derived, manual-known, and effective union state. Cache readiness, completeness, refresh time, counts, failures, and indeterminate unknown state are explicit. Missing or partial cache data is not treated as confirmed unknown vocabulary.
