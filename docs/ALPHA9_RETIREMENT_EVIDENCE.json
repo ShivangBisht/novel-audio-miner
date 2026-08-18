@@ -1,0 +1,74 @@
+{
+  "schema": "AlphaRetirementEvidence.v1",
+  "version": "1.0.0",
+  "baseline": "490bb26b1de3daeaa85adec7c72a9c0968602ce6",
+  "retired": [
+    {
+      "id": "known-word-legacy-key-symbol",
+      "symbol": "LEGACY_CACHE_KEY",
+      "file": "src/lib/wordCache.js",
+      "reason": "No consumer reads the retired cache as authority; only bounded deletion hygiene remains.",
+      "replacement": "Inline retired key literal in clearCache cleanup.",
+      "behaviorPreserved": "Existing installations still remove novel-audio-miner:wordCache when clearing the Anki cache."
+    }
+  ],
+  "retained": [
+    {
+      "id": "reader-interaction-legacy-shape",
+      "file": "src/lib/analyzerMiningSelection.js",
+      "classification": "retain-test-compatibility",
+      "blocker": "Inherited analyzer mining and Teaching qualification still exercise pre-Alpha-2 candidate shapes."
+    },
+    {
+      "id": "phase5-mining-exports",
+      "file": "src/lib/analyzerMiningSelection.js",
+      "classification": "retain-external-contract",
+      "blocker": "Production and inherited test consumers still import compatibility exports."
+    },
+    {
+      "id": "reader-progress-v0-v1",
+      "file": "src/lib/persistenceRegistry.js",
+      "classification": "retain-migration",
+      "blocker": "Alpha 8 migration must recognize existing unversioned and version 1 progress."
+    },
+    {
+      "id": "known-word-v3-records",
+      "file": "src/lib/wordCache.js",
+      "classification": "retain-migration",
+      "blocker": "Existing version 3 Anki and manual-known records remain supported."
+    },
+    {
+      "id": "epub-authoritative-fallback",
+      "file": "src/lib/epubParser.js",
+      "classification": "not-actually-legacy",
+      "blocker": "Fallback remains inside the Phase 13 authoritative parser and protects reconstruction qualification failures."
+    },
+    {
+      "id": "scene-prefetch-phase3-api",
+      "file": "src/lib/scenePrefetch.js",
+      "classification": "retain-test-compatibility",
+      "blocker": "Inherited Phase 3 and Phase 12 qualification still consume the wrapper."
+    },
+    {
+      "id": "dictionary-form-alias",
+      "file": "src/lib/analyzerReaderSpanAdapter.js",
+      "classification": "retain-production",
+      "blocker": "Presentation and diagnostic consumers still rely on the mechanical alias."
+    },
+    {
+      "id": "tokenizer-retirement-test",
+      "file": "scripts/test-tokenizer-retirement.mjs",
+      "classification": "retain-test-compatibility",
+      "blocker": "Prevents restoration of Kuromoji, retired tokenizer modules, and obsolete Reader integrations."
+    }
+  ],
+  "protectedAuthorities": [
+    "readerSpans",
+    "canonical-reader-interaction",
+    "known-word-union",
+    "latest-kiku-enrichment",
+    "domain-status",
+    "api-contracts",
+    "persistence-migrations"
+  ]
+}

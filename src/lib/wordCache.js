@@ -1,7 +1,6 @@
 /** Alpha 4 known-word authority and cache lifecycle. */
 const ANKI_CACHE_KEY = 'novel-audio-miner:ankiWordCache';
 const MANUAL_KNOWN_KEY = 'novel-audio-miner:manualKnownWords';
-const LEGACY_CACHE_KEY = 'novel-audio-miner:wordCache';
 const CACHE_VERSION = 4;
 const CACHE_TTL_DAYS = 7;
 const NOTE_TYPE_FIELDS = { 'Kaishi 1.5k':'Word', JP1Kv3:'Word', ImmersionKitCard:'Word', Kiku:'Expression' };
@@ -62,5 +61,5 @@ export function isKnownWord(word){return resolveKnownWordState(word).effective;}
 export function getManualKnownWords(){return new Set(loadManual());}
 export function getCacheSize(){return union().size;}
 export function getCacheStats(){const a=getKnownWordAuthority();return {anki:a.ankiCount,manual:a.manualCount,total:a.effectiveCount,phase:a.phase,complete:a.complete,refreshedAt:a.refreshedAt,error:a.error,failures:[...a.failures]};}
-export function clearCache(){ankiRecord=null;runtime={phase:'idle',error:null};try{localStorage.removeItem(ANKI_CACHE_KEY);localStorage.removeItem(LEGACY_CACHE_KEY);}catch{}}
+export function clearCache(){ankiRecord=null;runtime={phase:'idle',error:null};try{localStorage.removeItem(ANKI_CACHE_KEY);localStorage.removeItem('novel-audio-miner:wordCache');}catch{}}
 export function clearManualKnownWords(){manualKnownCache=new Set();saveManual();}

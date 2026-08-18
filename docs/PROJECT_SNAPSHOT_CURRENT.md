@@ -492,3 +492,8 @@ Alpha 7 registers canonical production routes and request/response structures, v
 ## Alpha 8 persistence and migration hardening
 
 Alpha 8 inventories persistence ownership, versions Reader progress, adds backup-before-write migration and rollback receipts, classifies corrupt and incompatible records, and includes read-only persistence health in Debug Report v2 without mutating backend stores.
+
+
+## Alpha 9 legacy and unwanted code retirement
+
+Alpha 9 removes the unused known-word legacy-key symbol while preserving bounded cleanup for existing installations, and records explicit consumer or migration blockers for compatibility code that remains active. No production authority or backend store changes.
