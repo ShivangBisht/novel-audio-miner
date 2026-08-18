@@ -1,4 +1,5 @@
 /** Phase 5.1: pure, read-only learning projection from validated readerSpans. */
+import { createReaderSpanReference } from './readerInteractionContext.js';
 export function buildAnalyzerLearningModel(words, { isKnown = () => false, getFrequency = () => null } = {}) {
   const spans = Array.isArray(words) ? words : [];
   const comprehensionSpans = [];
@@ -51,12 +52,25 @@ function requiredKey(value, span, flag) {
 function optionalKey(value) { return typeof value === 'string' && value.trim() ? value.trim() : ''; }
 function copySpan(span, extra = {}) {
   return {
-    start: span.start, end: span.end, surface: span.surface, displayRole: span.displayRole,
-    headword: span.headword ?? null, knownLookupKey: span.knownLookupKey ?? null,
-    frequencyLookupKey: span.frequencyLookupKey ?? null, grammarId: span.grammarId ?? null,
-    hostLookupKey: span.hostLookupKey ?? null, correctionId: span.correctionId ?? null,
-    correctionScope: span.correctionScope ?? null, correctionAction: span.correctionAction ?? null,
-    grammarFocusRanges: Array.isArray(span.grammarFocusRanges) ? span.grammarFocusRanges.map(r => ({ ...r })) : [],
+    start: span.start,
+    end: span.end,
+    surface: span.surface,
+    displayRole: span.displayRole,
+    headword: span.headword ?? null,
+    knownLookupKey: span.knownLookupKey ?? null,
+    frequencyLookupKey: span.frequencyLookupKey ?? null,
+    countsForComprehension: span.countsForComprehension === true,
+    showInNewWords: span.showInNewWords === true,
+    eligibleForMining: span.eligibleForMining === true,
+    grammarId: span.grammarId ?? null,
+    hostLookupKey: span.hostLookupKey ?? null,
+    correctionId: span.correctionId ?? null,
+    correctionScope: span.correctionScope ?? null,
+    correctionAction: span.correctionAction ?? null,
+    grammarFocusRanges: Array.isArray(span.grammarFocusRanges)
+      ? span.grammarFocusRanges.map(range => ({ ...range }))
+      : [],
+    spanReference: createReaderSpanReference(span),
     ...extra
   };
 }
@@ -65,5 +79,5 @@ function copySpan(span, extra = {}) {
 /** JP Analyzer is the sole production learning model. */
 export function resolveLearningOwnership({ analyzerValid, analyzerModel }) {
   if (!analyzerValid || !analyzerModel?.available) return { source: 'jp-analyzer', available: false, comprehension: null, newWords: [] };
-  return { source: 'jp-analyzer', available: true, comprehension: analyzerModel.comprehension, newWords: analyzerModel.newWords.map(span => ({ word: span.key, surface: span.surface, freq: span.frequency, analyzerSpan: span })) };
+  return { source: 'jp-analyzer', available: true, comprehension: analyzerModel.comprehension, newWords: analyzerModel.newWords.map(span => ({ word: span.key, surface: span.surface, freq: span.frequency, spanReference: span.spanReference })) };
 }

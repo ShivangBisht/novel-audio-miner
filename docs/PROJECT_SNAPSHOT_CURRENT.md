@@ -452,3 +452,13 @@ preserved post-Alpha roadmap is
 Alpha 1 records responsibility, source-of-truth, route, persistence, and
 retirement registries without changing production behavior.
 <!-- ALPHA_STABILIZATION_BASELINE_END -->
+
+<!-- ALPHA2_CANONICAL_INTERACTION_START -->
+## Alpha 2 canonical Reader interaction
+
+Alpha 2 establishes one immutable word-level interaction identity resolved from
+the current authoritative `readerSpans`. New Words is now a reference-based view,
+not an actionable span authority. DOM and New Words entry paths are qualified by
+an equivalence test, and known-word mutations receive explicit interaction
+identity. Teaching range contracts and backend contracts remain unchanged.
+<!-- ALPHA2_CANONICAL_INTERACTION_END -->

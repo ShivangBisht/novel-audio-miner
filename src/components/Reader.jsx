@@ -23,7 +23,8 @@ import { qualifyLogicalTeachingInput, logicalTeachingQualificationMessage } from
 import { planRollingTextScenePrefetch } from '../lib/scenePrefetch.js';
 import { resolveAnalyzerPresentationClass } from '../lib/analyzerPresentationPolicy.js';
 import { buildAnalyzerLearningModel, resolveLearningOwnership } from '../lib/analyzerLearningModel.js';
-import { createAnalyzerReaderContext, getAnalyzerMiningLookupKey, getAnalyzerSelectionActionState, resolveAnalyzerReaderContextForOffsets } from '../lib/analyzerMiningSelection.js';
+import { getAnalyzerMiningLookupKey, getAnalyzerSelectionActionState, resolveAnalyzerReaderContextForOffsets } from '../lib/analyzerMiningSelection.js';
+import { resolveCanonicalReaderInteractionFromReference } from '../lib/readerInteractionContext.js';
 import { buildDebugReportV2, buildDiagnosticSummaryV2 } from '../lib/debugReportV2.js';
 import { buildSanitizedAnalyzerObservability } from '../lib/analyzerObservability.js';
 import { ANALYZER_METADATA_LEASE_MS, getAnalyzerMetadataLease } from '../lib/analyzerMetadataLease.js';
@@ -170,13 +171,15 @@ function buildTokenRangesFromText(text, tokens) {
         ranges.push({
           start: exactStart,
           end: exactEnd,
+          analyzerStart: exactStart,
+          analyzerEnd: exactEnd,
           className: getWordColorClass(token),
           surface: token.surface
         });
         continue;
       }
     }
-
+    if (token.analysisSource === 'jp-analyzer-reader-spans') continue;
     let searchFrom = 0;
     while (searchFrom < source.length) {
       const start = source.indexOf(token.surface, searchFrom);
@@ -185,7 +188,14 @@ function buildTokenRangesFromText(text, tokens) {
       const overlaps = occupied.slice(start, end).some(Boolean);
       if (!overlaps) {
         for (let i = start; i < end; i++) occupied[i] = true;
-        ranges.push({ start, end, className: getWordColorClass(token), surface: token.surface });
+        ranges.push({
+          start,
+          end,
+          analyzerStart: start,
+          analyzerEnd: end,
+          className: getWordColorClass(token),
+          surface: token.surface
+        });
         break;
       }
       searchFrom = start + 1;
@@ -209,7 +219,7 @@ function renderColorizedPlainText(text, tokens, verticalMode) {
   let cursor = 0;
   ranges.forEach((range, index) => {
     if (range.start > cursor) parts.push(<span key={`plain-gap-${index}`}>{renderTextFragment(source.slice(cursor, range.start), verticalMode, `plain-gap-${index}`)}</span>);
-    parts.push(<span key={`plain-token-${index}`} className={range.className} data-token={range.surface} data-analyzer-start={range.start} data-analyzer-end={range.end}>{renderTextFragment(source.slice(range.start, range.end), verticalMode, `plain-token-${index}`)}</span>);
+    parts.push(<span key={`plain-token-${index}`} className={range.className} data-token={range.surface} data-analyzer-start={range.analyzerStart} data-analyzer-end={range.analyzerEnd}>{renderTextFragment(source.slice(range.start, range.end), verticalMode, `plain-token-${index}`)}</span>);
     cursor = range.end;
   });
   if (cursor < source.length) parts.push(<span key="plain-tail">{renderTextFragment(source.slice(cursor), verticalMode, 'plain-tail')}</span>);
@@ -231,6 +241,10 @@ function collectVisibleTextNodes(root) {
       return;
     }
     if (node.nodeType === Node.ELEMENT_NODE) {
+      if (node.tagName === 'BR') {
+        text += '\n';
+        return;
+      }
       if (['RT', 'RP', 'SCRIPT', 'STYLE'].includes(node.tagName)) return;
       for (const child of [...node.childNodes]) walk(child);
     }
@@ -248,7 +262,7 @@ function applyRangesToVisibleTextNodes(nodes, ranges) {
       const end = Math.min(range.end, info.end);
       if (start < end) {
         if (!byNodeIndex.has(nodeIndex)) byNodeIndex.set(nodeIndex, []);
-        byNodeIndex.get(nodeIndex).push({ localStart: start - info.start, localEnd: end - info.start, className: range.className, surface: range.surface, analyzerStart: range.start, analyzerEnd: range.end });
+        byNodeIndex.get(nodeIndex).push({ localStart: start - info.start, localEnd: end - info.start, className: range.className, surface: range.surface, analyzerStart: range.analyzerStart, analyzerEnd: range.analyzerEnd });
       }
     }
   }
@@ -454,7 +468,8 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
         isKnown: isKnownWord,
         getFrequency
       });
-    } catch {
+    } catch (error) {
+      console.error('[Reader] Analyzer learning projection failed:', error);
       return null;
     }
   }, [isText, jpAnalyzerReader, cacheVersion, globalFreqReady]);
@@ -697,29 +712,40 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     }, 10);
   }
 
+  function resolveNewWordInteraction(newWord) {
+    if (learningOwnership.source !== 'jp-analyzer' || !newWord?.spanReference) {
+      return { valid: false, context: null, reason: 'new-word-reference-unavailable' };
+    }
+    return resolveCanonicalReaderInteractionFromReference(
+      jpAnalyzerReader.words,
+      newWord.spanReference,
+      {
+        entryPoint: 'new-words',
+        rawSelectedText: newWord.surface || newWord.word,
+        sceneIdentity: `${book.id}:${itemIndex}`,
+        analyzerIdentity: jpAnalyzerShadow?.cacheIdentity || null
+      }
+    );
+  }
   function selectNewWord(newWord) {
-    const span = newWord.analyzerSpan;
-    if (learningOwnership.source === 'jp-analyzer' && span) {
-      const context = createAnalyzerReaderContext(span, span.start, span.end, newWord.surface || newWord.word);
-      setSelectedReaderContext(context);
-      setSelectedText(context.surface);
+    const resolution = resolveNewWordInteraction(newWord);
+    if (resolution.valid) {
+      setSelectedReaderContext(resolution.context);
+      setSelectedText(resolution.context.surface);
       setSelectionIssue('');
       return;
     }
     setSelectedReaderContext(null);
-    setSelectionIssue('');
-    setSelectedText(newWord.word);
+    setSelectedText(newWord.surface || newWord.word || '');
+    setSelectionIssue('This New Words entry no longer matches the current authoritative analyzer span.');
   }
-
-  function getKnownKeyCandidates() {
-    const key = String(selectedReaderContext?.knownLookupKey || '').trim();
+  function getKnownKeyCandidates(interaction = selectedReaderContext) {
+    const key = String(interaction?.knownLookupKey || '').trim();
     return key ? [key] : [];
   }
-
-  function getPrimaryKnownKey(word) { return getKnownKeyCandidates()[0] || String(word || '').trim(); }
-  function isManualKnownCandidate() { return getKnownKeyCandidates().some(candidate => isManualKnownWord(candidate)); }
-  function isKnownCandidate() { return getKnownKeyCandidates().some(candidate => isKnownWord(candidate)); }
-
+  function getPrimaryKnownKey(word, interaction = selectedReaderContext) { return getKnownKeyCandidates(interaction)[0] || String(word || '').trim(); }
+  function isManualKnownCandidate(interaction = selectedReaderContext) { return getKnownKeyCandidates(interaction).some(candidate => isManualKnownWord(candidate)); }
+  function isKnownCandidate(interaction = selectedReaderContext) { return getKnownKeyCandidates(interaction).some(candidate => isKnownWord(candidate)); }
   function getAnalyzerActionState() {
     return getAnalyzerSelectionActionState(selectedReaderContext, {
       isKnown: isKnownWord,
@@ -727,12 +753,12 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     });
   }
 
-  function handleMarkKnown(word) {
+  function handleMarkKnown(word, interaction = selectedReaderContext) {
     const target = String(word || '').trim();
     if (!target) return;
     const primary = learningOwnership.source === 'jp-analyzer'
-      ? String(selectedReaderContext?.knownLookupKey || '').trim()
-      : getPrimaryKnownKey(target);
+      ? String(interaction?.knownLookupKey || '').trim()
+      : getPrimaryKnownKey(target, interaction);
     if (!primary) {
       setStatus({ type: 'error', message: 'This analyzer span has no vocabulary known-word identity.' });
       return;
@@ -743,10 +769,10 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     setStatus({ type: 'ok', message: `Marked ${primary} as known.` });
   }
 
-  function handleUndoKnown(word) {
+  function handleUndoKnown(word, interaction = selectedReaderContext) {
     const target = String(word || '').trim();
     if (!target) return;
-    const candidates = getKnownKeyCandidates(target);
+    const candidates = getKnownKeyCandidates(interaction);
     const removed = candidates.filter(candidate => removeManualKnownWord(candidate));
     setSelectedText(target);
     setCacheVersion(v => v + 1);
@@ -755,6 +781,18 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     } else {
       setStatus({ type: 'error', message: `${target} was not found in manual known words. It may be known from Anki.` });
     }
+  }
+  function handleMarkKnownForNewWord(newWord) {
+    const resolution = resolveNewWordInteraction(newWord);
+    if (!resolution.valid) {
+      setSelectionIssue('This New Words entry no longer matches the current authoritative analyzer span.');
+      setStatus({ type: 'error', message: 'Could not resolve the current authoritative New Words span.' });
+      return;
+    }
+    setSelectedReaderContext(resolution.context);
+    setSelectedText(resolution.context.surface);
+    setSelectionIssue('');
+    handleMarkKnown(resolution.context.surface, resolution.context);
   }
   function handleToggleTeachingMode() { setTeachingMode(value => !value); setTeachingSelection(null); }
   function updateStyle(patch) { setReaderStyle(s => ({ ...s, ...patch })); }
@@ -855,6 +893,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
       selection: {
         raw: selectedText || '',
         readerContext: selectedReaderContext,
+        readerInteraction: selectedReaderContext,
         actionState,
         issue: selectionIssue || null
       },
@@ -1009,7 +1048,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
                   const display = unknownWord.surface || unknownWord.word;
                   return <span key={index} className="word-badge-pair">
                     <button type="button" className={`word-badge ${unknownWord.freq?.category ? `word-freq-${unknownWord.freq.category}` : 'word-freq-unlisted'}`} title={`${unknownWord.freq ? `Rank ${unknownWord.freq.rank} · ${unknownWord.freq.category}` : 'Unlisted'} · Click to select`} onClick={() => selectNewWord(unknownWord)}>{display}</button>
-                    <button type="button" className="mark-known-mini" title={`Mark ${display} as known`} onClick={() => handleMarkKnown(unknownWord.word)}>✓</button>
+                    <button type="button" className="mark-known-mini" title={`Mark ${display} as known`} onClick={() => handleMarkKnownForNewWord(unknownWord)}>✓</button>
                   </span>;
                 })}
               </div>
