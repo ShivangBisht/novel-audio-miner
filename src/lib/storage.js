@@ -1,3 +1,4 @@
+import { readProgressRecord, writeProgressRecord } from './persistenceRegistry.js';
 /**
  * Reader progress storage.
  *
@@ -20,7 +21,7 @@ export function saveProgress(id, state) {
   if (!key) return;
 
   try {
-    localStorage.setItem(key, JSON.stringify(state));
+    writeProgressRecord(localStorage, key, state);
   } catch {
     // Ignore storage failures. Reader progress is useful but non-critical.
   }
@@ -31,8 +32,7 @@ export function getProgress(id) {
   if (!key) return null;
 
   try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : null;
+    return readProgressRecord(localStorage, key);
   } catch {
     return null;
   }

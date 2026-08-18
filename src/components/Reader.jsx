@@ -29,6 +29,7 @@ import { interactionMatchesAnalyzerElement, isReaderSpanActivationKey, readAnaly
 import { buildDebugReportV2, buildDiagnosticSummaryV2 } from '../lib/debugReportV2.js';
 import { buildSanitizedAnalyzerObservability } from '../lib/analyzerObservability.js';
 import { buildContractDiagnostics } from '../lib/apiContractRegistry.js';
+import { inspectPersistenceHealth } from '../lib/persistenceRegistry.js';
 import ReaderDomainStatus from './ReaderDomainStatus.jsx';
 import { createStatusRegistry, createDomainStatus, projectAnalyzerStatus, projectAnkiStatus, projectKnownWordStatus, updateStatusDomain } from '../lib/operationStatus.js';
 import { ANALYZER_METADATA_LEASE_MS, getAnalyzerMetadataLease } from '../lib/analyzerMetadataLease.js';
@@ -970,6 +971,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
       },
       statusDomains,
       contractDiagnostics: buildContractDiagnostics(),
+      persistenceDiagnostics: inspectPersistenceHealth(localStorage),
       mining: {
         candidate: selectedReaderContext?.eligibleForMining ? selectedReaderContext : null,
         lookupIdentity: selectedReaderContext ? getAnalyzerMiningLookupKey(selectedReaderContext) : null,

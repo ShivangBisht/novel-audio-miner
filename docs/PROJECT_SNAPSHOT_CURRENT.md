@@ -487,3 +487,8 @@ Alpha 6 replaces shared Reader status with immutable domain-owned selection, kno
 ## Alpha 7 frontend/backend contract consolidation
 
 Alpha 7 registers canonical production routes and request/response structures, validates authoritative analyzer payloads, detects route and schema drift, contains compatibility projections, and includes contract diagnostics in Debug Report v2.
+
+
+## Alpha 8 persistence and migration hardening
+
+Alpha 8 inventories persistence ownership, versions Reader progress, adds backup-before-write migration and rollback receipts, classifies corrupt and incompatible records, and includes read-only persistence health in Debug Report v2 without mutating backend stores.

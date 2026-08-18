@@ -1,0 +1,125 @@
+{
+  "schema": "AlphaPersistenceRegistry.v1",
+  "version": "1.0.0",
+  "states": [
+    "absent",
+    "current",
+    "migratable",
+    "migration-required",
+    "corrupt",
+    "incompatible",
+    "backup-required",
+    "recovery-required",
+    "read-only",
+    "healthy"
+  ],
+  "records": [
+    {
+      "id": "reader.progress.v2",
+      "owner": "reader",
+      "medium": "localStorage",
+      "keyPattern": "novel-audio-miner:<bookId>",
+      "currentVersion": 2,
+      "legacyVersions": [
+        0,
+        1
+      ],
+      "migration": "backup-validate-write-readback",
+      "sensitivity": "local-reading-state"
+    },
+    {
+      "id": "known.anki.v4",
+      "owner": "known-word",
+      "medium": "localStorage",
+      "keyPattern": "novel-audio-miner:ankiWordCache",
+      "currentVersion": 4,
+      "legacyVersions": [
+        3
+      ],
+      "migration": "validated-record-upgrade",
+      "sensitivity": "local-vocabulary"
+    },
+    {
+      "id": "known.manual.v4",
+      "owner": "known-word",
+      "medium": "localStorage",
+      "keyPattern": "novel-audio-miner:manualKnownWords",
+      "currentVersion": 4,
+      "legacyVersions": [
+        3
+      ],
+      "migration": "validated-record-upgrade",
+      "sensitivity": "local-vocabulary"
+    },
+    {
+      "id": "analyzer.cache.v3.1",
+      "owner": "analyzer",
+      "medium": "memory",
+      "keyPattern": "jp-analyzer-reader-cache-v3:*",
+      "currentVersion": "3.1",
+      "legacyVersions": [],
+      "migration": "invalidate-only",
+      "sensitivity": "derived-analysis"
+    },
+    {
+      "id": "analyzer.metadata-lease.v1",
+      "owner": "analyzer",
+      "medium": "memory",
+      "keyPattern": "activeLease",
+      "currentVersion": 1,
+      "legacyVersions": [],
+      "migration": "expire-only",
+      "sensitivity": "operational"
+    },
+    {
+      "id": "dictionary.browser.v1",
+      "owner": "dictionary-management",
+      "medium": "IndexedDB",
+      "keyPattern": "jp-analyzer-dictionary-snapshots",
+      "currentVersion": 1,
+      "legacyVersions": [],
+      "migration": "transactional-indexeddb",
+      "sensitivity": "dictionary-metadata"
+    },
+    {
+      "id": "backend.teaching-annotations.v1",
+      "owner": "jp-analyzer",
+      "medium": "SQLite",
+      "keyPattern": "app/data/teaching_annotations.sqlite3",
+      "currentVersion": 1,
+      "legacyVersions": [],
+      "migration": "backend-owned-backup-transaction",
+      "sensitivity": "teaching-evidence"
+    },
+    {
+      "id": "backend.teaching-decisions.v1",
+      "owner": "jp-analyzer",
+      "medium": "SQLite",
+      "keyPattern": "app/data/teaching_decisions.sqlite3",
+      "currentVersion": 1,
+      "legacyVersions": [],
+      "migration": "backend-owned-backup-transaction",
+      "sensitivity": "teaching-evidence"
+    },
+    {
+      "id": "backend.dictionary.v1",
+      "owner": "jp-analyzer",
+      "medium": "SQLite",
+      "keyPattern": "data/*dictionary*",
+      "currentVersion": 1,
+      "legacyVersions": [],
+      "migration": "staging-promotion-only",
+      "sensitivity": "authoritative-dictionary"
+    },
+    {
+      "id": "startup.ownership.v1",
+      "owner": "startup-supervisor",
+      "medium": "filesystem-json",
+      "keyPattern": "data/startup/*",
+      "currentVersion": 1,
+      "legacyVersions": [],
+      "migration": "owner-validated-recovery",
+      "sensitivity": "process-identity"
+    }
+  ]
+}
