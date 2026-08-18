@@ -71,7 +71,8 @@
     "test:alpha6": "npm run test:alpha5 && node scripts/test-alpha6-status-authority.mjs",
     "test:alpha7": "npm run test:alpha6 && node scripts/test-alpha7-contract-consolidation.mjs",
     "test:alpha8": "npm run test:alpha7 && node scripts/test-alpha8-persistence-hardening.mjs",
-    "test:alpha9": "npm run test:alpha8 && node scripts/test-alpha9-retirement.mjs"
+    "test:alpha9": "npm run test:alpha8 && node scripts/test-alpha9-retirement.mjs",
+    "test:alpha10": "npm run test:alpha9 && node scripts/test-alpha10-release-candidate.mjs && npm run build"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.3",

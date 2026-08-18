@@ -1,0 +1,74 @@
+{
+  "schema": "AlphaReleaseCandidateManifest.v1",
+  "version": "1.0.0",
+  "candidateId": "novel-audio-miner-alpha10-rc1",
+  "status": "implementation-complete",
+  "releaseDecision": "blocked-pending-runtime-qualification",
+  "repositories": {
+    "frontend": {
+      "branch": "phase15-ui-overhaul",
+      "baselineCommit": "2b1d62686466d55fba6ae6cd26b978f71da4fcd7",
+      "implementationCommit": null
+    },
+    "backend": {
+      "branch": "main",
+      "commit": "a82d2713a90fb80fc66503d8d76b0be493cfde1a",
+      "productionChangesRequired": false
+    }
+  },
+  "application": {
+    "name": "Novel Audio Miner",
+    "version": "4.1.0"
+  },
+  "contracts": {
+    "apiRegistrySchema": "AlphaApiContractRegistry.v1",
+    "apiRegistryVersion": "1.0.0",
+    "persistenceRegistrySchema": "AlphaPersistenceRegistry.v1",
+    "persistenceRegistryVersion": "1.0.0",
+    "retirementEvidenceSchema": "AlphaRetirementEvidence.v1",
+    "retirementEvidenceVersion": "1.0.0",
+    "readerSpanSchemaVersion": "1.1",
+    "readerCandidateSchemaVersion": "2.0",
+    "linguisticReaderTruth": "readerSpans"
+  },
+  "automatedQualification": {
+    "status": "not-observed",
+    "frontendCommand": "npm.cmd run test:alpha10",
+    "frontendExpected": "Alpha 10 full-system release-candidate qualification tests passed",
+    "backendCommand": ".\\.venv\\Scripts\\python.exe -m pytest",
+    "backendExpected": "all supported tests pass; only explicitly documented skips allowed",
+    "productionBuildCommand": "npm.cmd run build",
+    "repositoryCheck": "git diff --check"
+  },
+  "runtimeQualification": {
+    "status": "not-observed",
+    "worksheet": "docs/ALPHA10_RUNTIME_QUALIFICATION.md",
+    "required": true,
+    "operator": null,
+    "completedAt": null,
+    "evidenceDigest": null
+  },
+  "releaseRequirements": [
+    "automated-qualified",
+    "backend-qualified",
+    "runtime-qualified",
+    "shutdown-qualified",
+    "repositories-clean",
+    "commits-pushed"
+  ],
+  "knownNonBlockingWarnings": [
+    "Vite production chunk may exceed the default 500 kB warning threshold."
+  ],
+  "rollback": {
+    "frontendCommit": "2b1d62686466d55fba6ae6cd26b978f71da4fcd7",
+    "backendCommit": "a82d2713a90fb80fc66503d8d76b0be493cfde1a"
+  },
+  "invariants": [
+    "readerSpans is sole linguistic Reader truth",
+    "New Words is a view, not authority",
+    "missing or partial known-word cache is not confirmed unknown",
+    "latest Kiku note is discovered once and pinned",
+    "Teaching does not tune or activate the analyzer",
+    "Yomitan remains external and independent"
+  ]
+}

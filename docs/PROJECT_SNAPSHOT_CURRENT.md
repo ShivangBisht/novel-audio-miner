@@ -497,3 +497,8 @@ Alpha 8 inventories persistence ownership, versions Reader progress, adds backup
 ## Alpha 9 legacy and unwanted code retirement
 
 Alpha 9 removes the unused known-word legacy-key symbol while preserving bounded cleanup for existing installations, and records explicit consumer or migration blockers for compatibility code that remains active. No production authority or backend store changes.
+
+
+## Alpha 10 full-system qualification and release candidate
+
+Alpha 10 binds the frontend and backend checkpoints in a release-candidate manifest, adds a complete inherited automated gate, replaces stale Kuromoji-era release documentation, and provides an operator runtime worksheet. Initial status is implementation-complete and release remains blocked until backend, runtime, shutdown, clean-repository, and pushed-commit evidence is recorded.
