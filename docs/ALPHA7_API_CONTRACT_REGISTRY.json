@@ -1,0 +1,318 @@
+{
+  "schema": "AlphaApiContractRegistry.v1",
+  "version": "1.0.0",
+  "authority": {
+    "linguisticReaderTruth": "readerSpans",
+    "compatibilityPolicy": "validated-adapter-only"
+  },
+  "contracts": [
+    {
+      "id": "analyzer.health.v1",
+      "method": "GET",
+      "path": "/health",
+      "client": "src/lib/jpAnalyzerClient.js",
+      "owner": "app/analyzer/service.py",
+      "request": {
+        "required": []
+      },
+      "response": {
+        "required": [
+          "analyzerVersion",
+          "readerSpanSchemaVersion",
+          "correctionRevision"
+        ]
+      },
+      "authority": "production"
+    },
+    {
+      "id": "analyzer.analyze.v1",
+      "method": "POST",
+      "path": "/analyze",
+      "client": "src/lib/jpAnalyzerClient.js",
+      "owner": "app/analyzer/service.py",
+      "request": {
+        "required": [
+          "text"
+        ]
+      },
+      "response": {
+        "required": [
+          "text",
+          "readerSpanSchemaVersion",
+          "readerSpans",
+          "readerCandidateSchemaVersion",
+          "readerCandidates",
+          "readerSelection"
+        ]
+      },
+      "versions": {
+        "readerSpanSchemaVersion": [
+          "1.1"
+        ],
+        "readerCandidateSchemaVersion": [
+          "2.0"
+        ]
+      },
+      "authority": "production"
+    },
+    {
+      "id": "correction.preview.v1",
+      "method": "POST",
+      "path": "/reader-corrections/preview",
+      "client": "src/lib/teachingCorrectionsClient.js",
+      "owner": "app/analyzer/reader_corrections_api.py",
+      "request": {
+        "required": [
+          "sentence",
+          "start",
+          "end",
+          "surface",
+          "action"
+        ]
+      },
+      "response": {
+        "required": [
+          "originalReaderSpans",
+          "previewReaderSpans"
+        ]
+      },
+      "authority": "production"
+    },
+    {
+      "id": "correction.scope.v1",
+      "method": "GET",
+      "path": "/reader-corrections/scope",
+      "client": "src/lib/teachingCorrectionsClient.js",
+      "owner": "app/analyzer/reader_corrections_api.py",
+      "request": {
+        "required": [
+          "sentence"
+        ]
+      },
+      "response": {
+        "required": [
+          "corrections"
+        ]
+      },
+      "authority": "production"
+    },
+    {
+      "id": "correction.save.v1",
+      "method": "POST",
+      "path": "/reader-corrections",
+      "client": "src/lib/teachingCorrectionsClient.js",
+      "owner": "app/analyzer/reader_corrections_api.py",
+      "request": {
+        "required": [
+          "sentence",
+          "start",
+          "end",
+          "surface",
+          "action"
+        ]
+      },
+      "response": {
+        "required": [
+          "saved",
+          "correctionId"
+        ]
+      },
+      "authority": "production"
+    },
+    {
+      "id": "correction.deactivate.v1",
+      "method": "DELETE",
+      "path": "/reader-corrections/{correctionId}",
+      "client": "src/lib/teachingCorrectionsClient.js",
+      "owner": "app/analyzer/reader_corrections_api.py",
+      "request": {
+        "required": [
+          "correctionId"
+        ]
+      },
+      "response": {
+        "required": [
+          "correctionRevisionAfter"
+        ]
+      },
+      "authority": "production"
+    },
+    {
+      "id": "teaching.snapshot.v1",
+      "method": "POST",
+      "path": "/teaching-decisions/snapshot",
+      "client": "src/lib/teachingDecisionClient.js",
+      "owner": "app/analyzer/teaching_decision_api.py",
+      "request": {
+        "required": [
+          "sentence"
+        ]
+      },
+      "response": {
+        "required": [
+          "snapshotId",
+          "contentDigest"
+        ]
+      },
+      "authority": "production"
+    },
+    {
+      "id": "teaching.decision.create.v1",
+      "method": "POST",
+      "path": "/teaching-decisions",
+      "client": "src/lib/teachingDecisionClient.js",
+      "owner": "app/analyzer/teaching_decision_api.py",
+      "request": {
+        "required": [
+          "snapshot",
+          "boundary",
+          "judgment",
+          "classification",
+          "failureClassification",
+          "confidence"
+        ]
+      },
+      "response": {
+        "required": [
+          "recordId"
+        ]
+      },
+      "authority": "production"
+    },
+    {
+      "id": "teaching.guided.diagnose.v1",
+      "method": "POST",
+      "path": "/teaching-guided-review/diagnose",
+      "client": "src/lib/teachingGuidedReviewClient.js",
+      "owner": "app/analyzer/teaching_guided_review_api.py",
+      "request": {
+        "required": [
+          "snapshotId",
+          "snapshotDigest",
+          "boundary",
+          "assertedRole",
+          "intent"
+        ]
+      },
+      "response": {
+        "required": [
+          "judgment",
+          "failureClassification",
+          "reason"
+        ]
+      },
+      "authority": "production"
+    },
+    {
+      "id": "teaching.quality.get.v1",
+      "method": "GET",
+      "path": "/teaching-quality/{recordId}",
+      "client": "src/lib/teachingQualityClient.js",
+      "owner": "app/analyzer/teaching_quality_api.py",
+      "request": {
+        "required": [
+          "recordId"
+        ]
+      },
+      "response": {
+        "required": [
+          "quality_status"
+        ]
+      },
+      "authority": "production"
+    },
+    {
+      "id": "dictionary.status.v1",
+      "method": "GET",
+      "path": "/dictionary-sync/management/status",
+      "client": "src/lib/dictionaryDirectImport.js",
+      "owner": "app/analyzer/layers/dictionary_api.py",
+      "request": {
+        "required": []
+      },
+      "response": {
+        "required": [
+          "installedDictionaries",
+          "installedDictionaryCount",
+          "registryEntryCount"
+        ]
+      },
+      "authority": "production"
+    },
+    {
+      "id": "dictionary.start.v1",
+      "method": "POST",
+      "path": "/dictionary-sync/item/start",
+      "client": "src/lib/dictionaryDirectImport.js",
+      "owner": "app/analyzer/layers/dictionary_api.py",
+      "request": {
+        "required": [
+          "mode",
+          "stableIdentity",
+          "displayTitle",
+          "dictionaryType",
+          "expectedEntries"
+        ]
+      },
+      "response": {
+        "required": [
+          "operationId"
+        ]
+      },
+      "authority": "production"
+    },
+    {
+      "id": "dictionary.batch.v1",
+      "method": "POST",
+      "path": "/dictionary-sync/item/batch",
+      "client": "src/lib/dictionaryDirectImport.js",
+      "owner": "app/analyzer/layers/dictionary_api.py",
+      "request": {
+        "required": [
+          "operationId",
+          "entries"
+        ]
+      },
+      "response": {
+        "required": []
+      },
+      "authority": "production"
+    },
+    {
+      "id": "dictionary.finish.v1",
+      "method": "POST",
+      "path": "/dictionary-sync/item/finish",
+      "client": "src/lib/dictionaryDirectImport.js",
+      "owner": "app/analyzer/layers/dictionary_api.py",
+      "request": {
+        "required": [
+          "operationId"
+        ]
+      },
+      "response": {
+        "required": [
+          "operationId"
+        ]
+      },
+      "authority": "production"
+    },
+    {
+      "id": "dictionary.update.check.v1",
+      "method": "POST",
+      "path": "/dictionary-sync/update/check",
+      "client": "src/lib/dictionaryUpdateCheck.js",
+      "owner": "app/analyzer/layers/dictionary_update_proxy.py",
+      "request": {
+        "required": [
+          "url"
+        ]
+      },
+      "response": {
+        "required": [
+          "metadata"
+        ]
+      },
+      "authority": "production"
+    }
+  ]
+}

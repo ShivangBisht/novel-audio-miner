@@ -482,3 +482,8 @@ Alpha 5 extracts enrichment orchestration, discovers the latest configured Kiku 
 ## Alpha 6 status and integration authority
 
 Alpha 6 replaces shared Reader status with immutable domain-owned selection, known-word, enrichment, Teaching, correction, analyzer, dictionary, AnkiConnect, and startup status snapshots. Cross-domain overwriting is eliminated and Debug Report v2 retains all domains.
+
+
+## Alpha 7 frontend/backend contract consolidation
+
+Alpha 7 registers canonical production routes and request/response structures, validates authoritative analyzer payloads, detects route and schema drift, contains compatibility projections, and includes contract diagnostics in Debug Report v2.

@@ -1,3 +1,4 @@
+import { assertContractPayload } from './apiContractRegistry.js';
 /**
  * JP Analyzer browser client.
  *
@@ -164,7 +165,8 @@ async function requestJson(
 }
 
 export async function getAnalyzerHealth(options = {}) {
-  return requestJson('/health', options);
+  const payload = await requestJson('/health', options);
+  return assertContractPayload('analyzer.health.v1', 'response', payload);
 }
 
 export async function getAnalyzerOpenApi(options = {}) {
@@ -292,14 +294,15 @@ export async function analyzeSentence(
     );
   }
 
+  const requestBody = { text: sourceText };
+  assertContractPayload('analyzer.analyze.v1', 'request', requestBody);
   const compact = await requestJson('/analyze', {
     ...options,
     method: 'POST',
-    body: {
-      text: sourceText
-    }
+    body: requestBody
   });
 
+  assertContractPayload('analyzer.analyze.v1', 'response', compact);
   const validation = validateCompactAnalysis(
     compact,
     sourceText

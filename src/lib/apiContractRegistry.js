@@ -1,0 +1,9 @@
+import registry from '../../docs/ALPHA7_API_CONTRACT_REGISTRY.json' with { type: 'json' };
+export const API_CONTRACT_REGISTRY=Object.freeze(registry);
+const byId=new Map(registry.contracts.map(item=>[item.id,item]));
+export class ApiContractError extends Error{constructor(message,details={}){super(message);this.name='ApiContractError';this.details=details;}}
+export function getApiContract(id){const value=byId.get(id);if(!value)throw new ApiContractError(`Unknown API contract: ${id}`,{id});return value;}
+function object(value){return value!==null&&typeof value==='object'&&!Array.isArray(value);}
+export function validateContractPayload(id,side,payload){const contract=getApiContract(id);const spec=contract[side];if(!spec)throw new ApiContractError(`Contract ${id} has no ${side} specification.`,{id,side});const errors=[];if(!object(payload))errors.push(`${side} payload is not an object.`);else for(const field of spec.required||[])if(payload[field]===undefined||payload[field]===null)errors.push(`${side}.${field} is required.`);if(side==='response'&&object(payload))for(const [field,allowed] of Object.entries(contract.versions||{}))if(!allowed.includes(String(payload[field]??'')))errors.push(`Unsupported ${field}: ${String(payload[field]??'missing')}.`);return Object.freeze({valid:errors.length===0,id,side,errors:Object.freeze(errors)});}
+export function assertContractPayload(id,side,payload){const result=validateContractPayload(id,side,payload);if(!result.valid)throw new ApiContractError(`API contract ${id} rejected ${side} payload.`,{...result});return payload;}
+export function buildContractDiagnostics(){return Object.freeze({schemaVersion:registry.schema,registryVersion:registry.version,contractCount:registry.contracts.length,contractIds:Object.freeze(registry.contracts.map(x=>x.id)),linguisticReaderTruth:registry.authority.linguisticReaderTruth,compatibilityPolicy:registry.authority.compatibilityPolicy,driftFindings:Object.freeze([])});}

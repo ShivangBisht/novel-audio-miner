@@ -28,6 +28,7 @@ import { resolveCanonicalReaderInteractionFromReference } from '../lib/readerInt
 import { interactionMatchesAnalyzerElement, isReaderSpanActivationKey, readAnalyzerElementIdentity } from '../lib/readerSpanInteraction.js';
 import { buildDebugReportV2, buildDiagnosticSummaryV2 } from '../lib/debugReportV2.js';
 import { buildSanitizedAnalyzerObservability } from '../lib/analyzerObservability.js';
+import { buildContractDiagnostics } from '../lib/apiContractRegistry.js';
 import ReaderDomainStatus from './ReaderDomainStatus.jsx';
 import { createStatusRegistry, createDomainStatus, projectAnalyzerStatus, projectAnkiStatus, projectKnownWordStatus, updateStatusDomain } from '../lib/operationStatus.js';
 import { ANALYZER_METADATA_LEASE_MS, getAnalyzerMetadataLease } from '../lib/analyzerMetadataLease.js';
@@ -968,6 +969,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
         issue: selectionIssue || null
       },
       statusDomains,
+      contractDiagnostics: buildContractDiagnostics(),
       mining: {
         candidate: selectedReaderContext?.eligibleForMining ? selectedReaderContext : null,
         lookupIdentity: selectedReaderContext ? getAnalyzerMiningLookupKey(selectedReaderContext) : null,
