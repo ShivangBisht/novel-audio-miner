@@ -507,3 +507,9 @@ Alpha 10 binds the frontend and backend checkpoints in a release-candidate manif
 ## Phase 15.5 Reader actions and feedback cleanup
 
 Phase 15.5 extracts the Reader action area into a presentation-only component and clarifies selected-span role, known ownership, mining eligibility, pinned Kiku target, progress, completion, mismatch, failure, and recovery text. Alpha 1-10 authority, persistence, and release-candidate boundaries remain unchanged.
+
+## Phase 15.6 Teaching presentation overhaul
+Phase 15.6 presents the Reader-connected Teaching workflow as a responsive drawer or full-screen sheet with clearer selection, preview, diagnosis, evidence, correction, quality, save, success, and recovery hierarchy. Teaching inputs, records, lifecycle, persistence, clients, and backend behavior remain unchanged.
+
+### Phase 15.6 runtime layout refinement
+The Teaching surface opens from the left edge of the Reader content area, uses a wider readable layout with two-column choices and comparisons where space permits, and uses a distinct plum-charcoal surface palette.

@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const panel=fs.readFileSync('src/components/TeachingPanel.jsx','utf8');
+const decision=fs.readFileSync('src/components/TeachingDecisionPanel.jsx','utf8');
+const reader=fs.readFileSync('src/components/Reader.jsx','utf8');
+const css=fs.readFileSync('src/styles.css','utf8');
+const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
+for(const token of ['teaching-surface','role="dialog"','aria-modal="true"','aria-labelledby="teaching-surface-title"','aria-label="Close Teaching review"','role="status"','aria-live="polite"'])assert.ok(panel.includes(token),token);
+for(const token of ['aria-labelledby="teaching-review-title"','Evidence workflow','role="alert"','Teaching review'])assert.ok(decision.includes(token),token);
+for(const token of ['PHASE15_6_TEACHING_PRESENTATION_BEGIN','.teaching-primary-actions{position:sticky','@media(max-width:700px)','height:100dvh','@media(prefers-reduced-motion:reduce)','PHASE15_6_LEFT_WIDE_TEACHING_SURFACE_BEGIN','--teaching-surface:#181621','.teaching-drawer-layer{\n  left:0;','width:min(1120px,calc(100% - 40px))','justify-content:flex-start','grid-template-columns:repeat(2,minmax(0,1fr))'])assert.ok(css.includes(token),token);
+for(const token of ['selection={teachingSelection}','analysis={teachingAnalysis ||','onCorrectionMutation={handleCorrectionMutation}','onTeachingReceipt={setLastTeachingReceipt}'])assert.ok(reader.includes(token),token);
+for(const frozen of ['previewReaderCorrection','saveReaderCorrection','deactivateReaderCorrection','captureTeachingSnapshot','createTeachingDecision','supersedeTeachingDecision','retractTeachingDecision','diagnoseGuidedTeaching'])assert.ok((panel+decision).includes(frozen),frozen);
+assert.equal(pkg.scripts['test:phase15.6'],'npm run test:phase15.5 && node scripts/test-phase15-teaching-presentation.mjs && npm run build');
+console.log('Phase 15.6 Teaching presentation tests passed');

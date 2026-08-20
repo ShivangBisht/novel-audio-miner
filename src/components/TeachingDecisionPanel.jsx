@@ -130,8 +130,8 @@ export default function TeachingDecisionPanel({ selection, analysis, provenance,
   async function inspect(record) { setSelectedRecord(record); setDiagnosis(null); try { setDiagnosis(await teachingDecisionDiagnosis(record.recordId)); } catch (error) { setMessage(error.message); } }
   async function retract(id) { if (!window.confirm(`Retract ${id}? History is retained.`)) return; setBusy(true); try { await retractTeachingDecision(id, 'Retracted in guided Teaching advanced tools'); await refresh(); setMessage('Decision retracted; history retained.'); } catch (error) { setMessage(error.message); } finally { setBusy(false); } }
 
-  return <section className="teaching-decision-panel teaching-review-card" data-testid="teaching-decision-panel">
-    <div className="teaching-review-header"><div><strong>Teaching review</strong><span>Saving Teaching evidence does not tune or activate the analyzer.</span></div><button type="button" className="secondary" onClick={onReturnToPreview}>Back to preview</button></div>
+  return <section className="teaching-decision-panel teaching-review-card" data-testid="teaching-decision-panel" aria-labelledby="teaching-review-title">
+    <div className="teaching-review-header"><div><span className="teaching-eyebrow">Evidence workflow</span><strong id="teaching-review-title">Teaching review</strong><span>Saving Teaching evidence does not tune or activate the analyzer.</span></div><button type="button" className="secondary" onClick={onReturnToPreview}>Back to preview</button></div>
     <ol className="teaching-review-progress"><li className={stage === 'diagnosis' ? 'active' : 'complete'}>Diagnosis</li><li className={stage === 'details' ? 'active' : (['review','success'].includes(stage) ? 'complete' : '')}>Details</li><li className={stage === 'review' ? 'active' : (stage === 'success' ? 'complete' : '')}>Save</li></ol>
     {summary && <div className="teaching-preview-meta"><span>Corpus: {summary.recordCount}</span><span>Integrity: {summary.integrity?.ok ? 'ok' : 'issues'}</span><span>Export: disabled</span></div>}
 
@@ -139,9 +139,9 @@ export default function TeachingDecisionPanel({ selection, analysis, provenance,
       <h4>Review automatic diagnosis</h4>
       <div className="teaching-comparison-grid"><div><span>Before</span><code>{beforePartition}</code></div><div><span>After</span><code>{afterPartition}</code></div></div>
       <div className="teaching-result-summary"><span>Selected result</span><strong>{selection.surface}</strong><span>Type: {roleLabel || ROLE_LABELS[assertedRole] || assertedRole}</span></div>
-      {busy && <div className="status-message working">{message}</div>}
+      {busy && <div className="status-message working" role="status" aria-live="polite">{message}</div>}
       {!busy && guidedDiagnosis && <div className="teaching-diagnosis-card"><span>System diagnosis</span><strong>{FAILURE_LABELS[guidedDiagnosis.failureClassification] || guidedDiagnosis.failureClassification}</strong><p>{guidedDiagnosis.reason}</p><details><summary>Show technical details</summary><div className="teaching-preview-meta"><span>Candidate: {guidedDiagnosis.candidatePresent ? 'present' : 'missing'}</span><span>Boundary: {guidedDiagnosis.boundaryMatches ? 'match' : 'different'}</span><span>Classification: {guidedDiagnosis.classificationMatches ? 'match' : 'different'}</span><span>Overlapping candidates: {guidedDiagnosis.overlappingCandidateCount}</span></div></details></div>}
-      {message && !busy && <div className="status-message error">{message}</div>}
+      {message && !busy && <div className="status-message error" role="alert">{message}</div>}
       <div className="teaching-primary-actions"><button type="button" disabled={busy || !guidedDiagnosis} onClick={() => setStage('details')}>Accept diagnosis and continue</button></div>
     </div>}
 
