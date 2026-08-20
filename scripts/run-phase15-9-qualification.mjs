@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+﻿import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
@@ -8,7 +8,7 @@ const root=resolve(import.meta.dirname,'..');
 const backend=resolve(process.env.JP_ANALYZER_ROOT||join(root,'..','JP analyzer'));
 const evidenceDir=resolve(process.env.PHASE15_9_EVIDENCE_DIR||join(root,'..','_PROJECT_WORK'));
 const runBackend=process.argv.includes('--backend');
-const expectedFrontend='881f5015bcfef6ed446d41c9b0fa8a65c9e798ad';
+const expectedFrontend='520522d43f6f7ebad87270dd648ba090a9892bed';
 const expectedBackend='a82d2713a90fb80fc66503d8d76b0be493cfde1a';
 const startedAt=new Date().toISOString();
 const results=[];
@@ -51,3 +51,4 @@ try{
 }catch(error){overall='failed';failure=String(error?.message||error);console.error(`\n[FAILED] ${failure}`);}
 const report={schema:'Phase15FunctionalQualification.v1',phase:'15.9',startedAt,completedAt:new Date().toISOString(),overall,frontend:{root,expectedCommit:expectedFrontend},backend:{root:backend,expectedCommit:expectedBackend,executed:runBackend,databaseGuards:beforeDatabases},environment:{platform:process.platform,node:process.version},results,failure,manualWorksheet:'docs/PHASE15_9_RUNTIME_QUALIFICATION.md'};
 mkdirSync(evidenceDir,{recursive:true});const path=join(evidenceDir,'phase15_9_qualification.json');writeFileSync(path,JSON.stringify(report,null,2)+'\n');console.log(`\nEvidence: ${path}`);process.exitCode=overall==='passed'?0:1;
+

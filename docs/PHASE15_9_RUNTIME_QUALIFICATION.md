@@ -1,10 +1,10 @@
-# Phase 15.9 Runtime Qualification Worksheet
+﻿# Phase 15.9 Runtime Qualification Worksheet
 
 Record only directly observed results as **passed, failed, blocked, or not-applicable**. Keep generated machine evidence outside Git in `D:\Mining\_PROJECT_WORK`.
 
 ## Identity
 
-- Frontend commit: `881f5015bcfef6ed446d41c9b0fa8a65c9e798ad`
+- Frontend commit: `520522d43f6f7ebad87270dd648ba090a9892bed`
 - Backend commit: `a82d2713a90fb80fc66503d8d76b0be493cfde1a`
 - Operator:
 - Started at:
@@ -67,3 +67,4 @@ Record only directly observed results as **passed, failed, blocked, or not-appli
 - Shutdown:
 - Overall Phase 15.9 decision:
 - Findings and evidence paths:
+
