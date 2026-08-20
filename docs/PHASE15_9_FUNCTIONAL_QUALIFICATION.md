@@ -9,3 +9,7 @@ No production behavior, backend code, database, or launcher is changed by this m
 ## Checkpoint binding
 
 The qualification runner records the actual clean frontend HEAD. `PHASE15_9_FRONTEND_COMMIT` is an optional strict assertion, not a tracked self-reference. When the variable is absent, the current clean HEAD is recorded as both the actual and expected qualification identity.
+
+## Windows build invocation
+
+On Windows, Node cannot reliably execute the `npm.cmd` batch shim directly with `shell: false`. The qualification runner therefore invokes `npm.cmd run build` through the explicit `ComSpec` executable with `/d /s /c`. Node tests and Git commands continue to use direct process execution with `shell: false`.

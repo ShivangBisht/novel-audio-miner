@@ -37,7 +37,8 @@ try{
     'test-phase15-ui-contract.mjs','test-phase15-reader-shell.mjs','test-phase15-reading-interface.mjs','test-phase15-sidebar-information-architecture.mjs','test-phase15-reader-actions.mjs','test-phase15-teaching-presentation.mjs','test-phase15-settings-workspace.mjs','test-phase15-design-system.mjs','test-phase15-functional-qualification.mjs'
   ];
   for(const script of frontendTests){const path=join(root,'scripts',script);if(!existsSync(path))throw new Error(`required frontend test missing: ${script}`);command(script,'node',[path]);}
-  command('production build',process.platform==='win32'?'npm.cmd':'npm',['run','build']);
+  if(process.platform==='win32') command('production build',process.env.ComSpec||'C:\\Windows\\System32\\cmd.exe',['/d','/s','/c','npm.cmd run build']);
+  else command('production build','npm',['run','build']);
   if(runBackend){
     const dbs=databases(backend);beforeDatabases=snapshot(dbs);
     const python=resolve(process.env.JP_ANALYZER_PYTHON||join(backend,'.venv','Scripts','python.exe'));
