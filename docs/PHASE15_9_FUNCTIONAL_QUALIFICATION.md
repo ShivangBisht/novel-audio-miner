@@ -5,3 +5,7 @@ Phase 15.9 adds a non-nested qualification harness. It invokes each supported fr
 The default command performs frontend and build qualification. Backend qualification is explicit because it can be long-running and must be preceded by review of the discovered runtime database hash scope. Manual runtime, launcher, accessibility, responsive, mining, Teaching, and shutdown evidence remains operator-observed in the accompanying worksheet.
 
 No production behavior, backend code, database, or launcher is changed by this milestone.
+
+## Checkpoint binding
+
+The qualification runner records the actual clean frontend HEAD. `PHASE15_9_FRONTEND_COMMIT` is an optional strict assertion, not a tracked self-reference. When the variable is absent, the current clean HEAD is recorded as both the actual and expected qualification identity.
