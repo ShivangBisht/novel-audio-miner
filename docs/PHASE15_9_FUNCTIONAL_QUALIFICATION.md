@@ -13,3 +13,7 @@ The qualification runner records the actual clean frontend HEAD. `PHASE15_9_FRON
 ## Windows build invocation
 
 On Windows, Node cannot reliably execute the `npm.cmd` batch shim directly with `shell: false`. The qualification runner therefore invokes `npm.cmd run build` through the explicit `ComSpec` executable with `/d /s /c`. Node tests and Git commands continue to use direct process execution with `shell: false`.
+
+## Failure-path database protection
+
+Backend database hashes are compared in a `finally` path, so authoritative-store integrity is recorded even when pytest fails. A failed pytest result and a database mutation remain independently visible in machine evidence.

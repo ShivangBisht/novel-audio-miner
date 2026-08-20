@@ -43,8 +43,15 @@ try{
     const dbs=databases(backend);beforeDatabases=snapshot(dbs);
     const python=resolve(process.env.JP_ANALYZER_PYTHON||join(backend,'.venv','Scripts','python.exe'));
     if(!existsSync(python))throw new Error(`backend Python missing: ${python}`);
-    command('JP Analyzer supported pytest suite',python,['-m','pytest'],backend);
-    const after=snapshot(dbs);if(JSON.stringify(beforeDatabases)!==JSON.stringify(after))throw new Error('authoritative database hash changed during backend qualification');
+    let pytestFailure=null;
+    try{ command('JP Analyzer supported pytest suite',python,['-m','pytest'],backend); }
+    catch(error){ pytestFailure=error; }
+    finally{
+      const after=snapshot(dbs);
+      results.push({label:'JP Analyzer database hash guard',status:JSON.stringify(beforeDatabases)===JSON.stringify(after)?'passed':'failed',before:beforeDatabases,after});
+      if(JSON.stringify(beforeDatabases)!==JSON.stringify(after))throw new Error('authoritative database hash changed during backend qualification');
+    }
+    if(pytestFailure)throw pytestFailure;
   }else results.push({label:'JP Analyzer supported pytest suite',status:'not-run',reason:'rerun with --backend after reviewing runtime hash scope'});
   command('frontend diff check','git',['diff','--check'],root);command('backend diff check','git',['diff','--check'],backend);
   if(git(root,'status','--short'))throw new Error('frontend working tree changed during qualification');
