@@ -12,8 +12,8 @@
     },
     "backend": {
       "branch": "main",
-      "commit": "a82d2713a90fb80fc66503d8d76b0be493cfde1a",
-      "productionChangesRequired": false
+      "commit": "753d7f44b3ef63cfca5b6acf02d1065704eee585",
+      "productionChangesRequired": true
     }
   },
   "application": {

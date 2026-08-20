@@ -7,7 +7,7 @@ Complete this worksheet only with directly observed results. Use `passed`, `fail
 ## Identity
 
 - Frontend commit: `2b1d62686466d55fba6ae6cd26b978f71da4fcd7` baseline plus Alpha 10 implementation commit
-- Backend commit: `a82d2713a90fb80fc66503d8d76b0be493cfde1a`
+- Backend commit: `753d7f44b3ef63cfca5b6acf02d1065704eee585`
 - Operator: Not recorded
 - Started at: Not recorded
 - Completed at: Not recorded
