@@ -513,3 +513,6 @@ Phase 15.6 presents the Reader-connected Teaching workflow as a responsive drawe
 
 ### Phase 15.6 runtime layout refinement
 The Teaching surface opens from the left edge of the Reader content area, uses a wider readable layout with two-column choices and comparisons where space permits, and uses a distinct plum-charcoal surface palette.
+
+## Phase 15.7 settings and administration workspace
+Phase 15.7 replaces nested Reader Tools disclosures with a coherent responsive workspace for Reading, Integrations, Dictionaries, Teaching administration, and Diagnostics while retaining existing clients, state ownership, persistence, and backend contracts.

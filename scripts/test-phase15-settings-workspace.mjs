@@ -1,0 +1,8 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';
+const reader=fs.readFileSync('src/components/Reader.jsx','utf8');const workspace=fs.readFileSync('src/components/SettingsWorkspace.jsx','utf8');const css=fs.readFileSync('src/styles.css','utf8');const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
+for(const token of ["import SettingsWorkspace from './SettingsWorkspace.jsx'",'<SettingsWorkspace','readerStyle={readerStyle}','statusDomains={statusDomains}','contractDiagnostics={buildContractDiagnostics()}','persistenceDiagnostics={inspectPersistenceHealth(localStorage)}'])assert.ok(reader.includes(token),token);
+for(const forbidden of ['<details className="dictionary-settings">','<details className="advanced-settings">','<div className="debug-panel">'])assert.equal(reader.includes(forbidden),false,forbidden);
+for(const token of ['Settings and administration','Reading','Integrations','Dictionaries','Teaching administration','Diagnostics','DictionaryManagementPanel','TeachingAdvancedDashboard','role="dialog"','aria-modal="true"','aria-current','type="password"','Debug Report v2','Status domains'])assert.ok(workspace.includes(token),token);
+for(const token of ['PHASE15_7_SETTINGS_WORKSPACE_BEGIN','.settings-workspace-layout{','grid-template-columns:280px minmax(0,1fr)','@media(max-width:900px)','height:100dvh','@media(prefers-reduced-motion:reduce)'])assert.ok(css.includes(token),token);
+assert.equal(pkg.scripts['test:phase15.7'],'npm run test:phase15.6 && node scripts/test-phase15-settings-workspace.mjs && npm run build');
+console.log('Phase 15.7 settings and administration workspace tests passed');

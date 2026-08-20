@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
-import DictionaryManagementPanel from './DictionaryManagementPanel.jsx';
+import SettingsWorkspace from './SettingsWorkspace.jsx';
 import TeachingPanel from './TeachingPanel.jsx';
 import { ReaderShell, ReaderStatusBar, ReaderTopBar, ReaderMainLayout, ReaderSidebar, ReaderViewport } from './reader/ReaderShell.jsx';
 import { ReaderHeader, ReaderNavigation, ReaderSidebarToggle, ReaderSceneFrame } from './reader/ReaderChrome.jsx';
@@ -1264,72 +1264,45 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
           )}
         </ReaderViewport>
         {toolsOpen && (
-          <div className="reader-tools-layer" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) setToolsOpen(false); }}>
-            <section className="reader-tools-panel" role="dialog" aria-modal="true" aria-label="Settings and tools">
-              <header className="reader-tools-header">
-                <div><span>Administration</span><h2>Settings and tools</h2></div>
-                <button type="button" className="secondary" onClick={() => setToolsOpen(false)}>Close</button>
-              </header>
-              <div className="reader-tools-content">
-          <details className="dictionary-settings">
-            <summary>Settings · Dictionary Management</summary>
-            <DictionaryManagementPanel />
-          </details>
-          <details className="advanced-settings">
-            <summary>Advanced</summary>
-            <div style={{ display: 'grid', gap: '8px', marginTop: '8px' }}>
-              <label style={{ fontSize: '11px', color: 'var(--muted)' }}>Note type: <input value={noteType} onChange={e => setNoteType(e.target.value)} /></label>
-              <label style={{ fontSize: '11px', color: 'var(--muted)', display: 'grid', gap: '4px' }}>
-                Colour source:
-                <select
-                  value={colorSource}
-                  onChange={event => setColorSource(
-                    normalizeColorSource(event.target.value)
-                  )}
-                >
-                  <option value={COLOR_SOURCES.JP_ANALYZER}>JP Analyzer</option>
-                  <option value={COLOR_SOURCES.PLAIN_TEXT}>Plain text</option>
-                </select>
-                <span style={{ fontSize: '10px' }}>
-                  JP Analyzer is the sole linguistic source. Plain Text changes presentation only; invalid analyzer output remains neutral.
-                </span>
-              </label>
-              <label style={{ fontSize: '11px', color: 'var(--muted)', display: 'grid', gap: '4px' }}>Session Token: <input value={sessionToken} onChange={e => handleSaveSessionToken(e.target.value)} placeholder="Paste __Secure-nadeshiko.session_token" /><span style={{ fontSize: '10px' }}>F12 → Application → Cookies → nadeshiko.co</span></label>
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                <button className="secondary" onClick={async () => { try { await buildCache(ankiRequest); setCacheVersion(v => v + 1); } catch (error) { setCacheVersion(v => v + 1); publishStatus('known-word', 'failed', 'error', error?.message || 'Known-word cache rebuild failed.', null, { recoverable: true, recoveryAction: 'Verify AnkiConnect and rebuild cache' }); } }} style={{ fontSize: '10px', padding: '4px 8px' }}>Rebuild Cache</button>
-                <button className="secondary" onClick={() => { clearCache(); setCacheVersion(v => v + 1); }} style={{ fontSize: '10px', padding: '4px 8px' }}>Clear Anki Cache</button>
-                <button className="secondary" onClick={toggleForceTts} style={{ fontSize: '10px', padding: '4px 8px', background: forceTts ? 'var(--warning)' : undefined }}>Force TTS: {forceTts ? 'ON' : 'OFF'}</button>
-                <button className="secondary" onClick={() => setDebugMode(v => !v)} style={{ fontSize: '10px', padding: '4px 8px', background: debugMode ? 'var(--accent)' : undefined }}>Debug Mode: {debugMode ? 'ON' : 'OFF'}</button>
-              </div>
-            </div>
-          </details>
-
-          {debugMode && (
-            <div className="debug-panel">
-              <div className="debug-panel-title-row">
-                <div className="debug-panel-title">Debug Report</div>
-              </div>
-              <div className="debug-summary-grid">
-                <div className="debug-mini-card"><span>Analyzer</span><strong>{jpAnalyzerShadow?.status ?? 'idle'}</strong></div>
-                <div className="debug-mini-card"><span>Reader contract</span><strong>{jpAnalyzerReader.valid ? 'valid' : 'invalid'}</strong></div>
-                <div className="debug-mini-card"><span>Result source</span><strong>{jpAnalyzerShadow?.source ?? '-'}</strong></div>
-                <div className="debug-mini-card"><span>Scene</span><strong>{itemIndex + 1} / {totalScenes}</strong></div>
-              </div>
-              <label style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '8px', fontSize: '10px', color: 'var(--muted)' }}>
-                <input type="checkbox" checked={includeFullParserInventory} onChange={event => setIncludeFullParserInventory(event.target.checked)} />
-                Include full EPUB parser inventory
-              </label>
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
-                <button type="button" className="debug-export-btn" onClick={handleExportDebugReport}>Export Debug Report</button>
-                <button type="button" className="secondary" onClick={handleCopyDiagnosticSummary}>Copy Diagnostic Summary</button>
-                <button type="button" className="secondary" onClick={clearJpAnalyzerShadowCache}>Clear Cached Sentence Analyses</button>
-              </div>
-            </div>
-          )}
-
-              </div>
-            </section>
-          </div>
+          <SettingsWorkspace
+            onClose={() => setToolsOpen(false)}
+            readerStyle={readerStyle}
+            updateStyle={updateStyle}
+            stepStyle={stepStyle}
+            resetStyle={resetStyle}
+            showFurigana={showFurigana}
+            setShowFurigana={setShowFurigana}
+            verticalMode={verticalMode}
+            setVerticalMode={setVerticalMode}
+            colorSource={colorSource}
+            setColorSource={value => setColorSource(normalizeColorSource(value))}
+            noteType={noteType}
+            setNoteType={setNoteType}
+            fields={fields}
+            setFields={setFields}
+            sessionToken={sessionToken}
+            setSessionToken={handleSaveSessionToken}
+            forceTts={forceTts}
+            toggleForceTts={toggleForceTts}
+            ankiStatus={ankiStatus}
+            knownWordAuthority={knownWordAuthority}
+            rebuildKnownWords={async () => { try { await buildCache(ankiRequest); setCacheVersion(value => value + 1); } catch (error) { setCacheVersion(value => value + 1); publishStatus('known-word', 'failed', 'error', error?.message || 'Known-word cache rebuild failed.', null, { recoverable: true, recoveryAction: 'Verify AnkiConnect and rebuild cache' }); } }}
+            clearKnownWords={() => { clearCache(); setCacheVersion(value => value + 1); }}
+            debugMode={debugMode}
+            setDebugMode={setDebugMode}
+            includeFullParserInventory={includeFullParserInventory}
+            setIncludeFullParserInventory={setIncludeFullParserInventory}
+            analyzerStatus={jpAnalyzerShadow?.status ?? 'idle'}
+            readerContractValid={jpAnalyzerReader.valid}
+            resultSource={jpAnalyzerShadow?.source ?? '-'}
+            sceneLabel={`${itemIndex + 1} / ${totalScenes}`}
+            statusDomains={statusDomains}
+            contractDiagnostics={buildContractDiagnostics()}
+            persistenceDiagnostics={inspectPersistenceHealth(localStorage)}
+            onExportDebugReport={handleExportDebugReport}
+            onCopyDiagnosticSummary={handleCopyDiagnosticSummary}
+            onClearAnalyzerCache={clearJpAnalyzerShadowCache}
+          />
         )}
       </ReaderMainLayout>
     </ReaderShell>
