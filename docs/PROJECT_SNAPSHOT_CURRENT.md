@@ -519,3 +519,6 @@ Phase 15.7 replaces nested Reader Tools disclosures with a coherent responsive w
 
 ## Phase 15.8 design system, responsiveness, and accessibility
 Phase 15.8 consolidates semantic UI tokens, shared controls, focus treatment, touch sizing, responsive overflow behavior, reduced motion, forced-colour support, and Settings focus management while preserving Reader typography and all processing contracts.
+
+## Phase 15.9 functional qualification
+Phase 15.9 adds a non-nested automated qualification harness, optional guarded backend pytest execution, external machine-readable evidence, and a structured manual worksheet for runtime, launcher, accessibility, responsive, mining, Teaching, and shutdown qualification.
