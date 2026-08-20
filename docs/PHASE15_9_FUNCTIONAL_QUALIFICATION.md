@@ -17,3 +17,6 @@ On Windows, Node cannot reliably execute the `npm.cmd` batch shim directly with 
 ## Failure-path database protection
 
 Backend database hashes are compared in a `finally` path, so authoritative-store integrity is recorded even when pytest fails. A failed pytest result and a database mutation remain independently visible in machine evidence.
+## Backend checkpoint binding
+
+The qualification runner records the actual clean JP Analyzer HEAD. PHASE15_9_BACKEND_COMMIT is an optional strict assertion rather than a tracked backend self-reference. Without the variable, the current clean backend HEAD is recorded as both the actual and expected backend qualification identity.

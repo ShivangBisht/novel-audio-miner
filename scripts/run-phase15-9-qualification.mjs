@@ -9,7 +9,7 @@ const backend=resolve(process.env.JP_ANALYZER_ROOT||join(root,'..','JP analyzer'
 const evidenceDir=resolve(process.env.PHASE15_9_EVIDENCE_DIR||join(root,'..','_PROJECT_WORK'));
 const runBackend=process.argv.includes('--backend');
 const expectedFrontend=String(process.env.PHASE15_9_FRONTEND_COMMIT||'').trim()||null;
-const expectedBackend='a82d2713a90fb80fc66503d8d76b0be493cfde1a';
+const expectedBackend=String(process.env.PHASE15_9_BACKEND_COMMIT||'').trim()||null;
 const startedAt=new Date().toISOString();
 const results=[];
 const command=(label,file,args,cwd=root)=>{
@@ -23,11 +23,11 @@ const git=(cwd,...args)=>command(`git ${args.join(' ')}`,'git',args,cwd).split(/
 const sha256=path=>{const hash=createHash('sha256');hash.update(readFileSync(path));return hash.digest('hex');};
 const databases=base=>{const found=[];const walk=(dir,depth=0)=>{if(depth>5)return;for(const name of readdirSync(dir)){if(['.git','.venv','__pycache__','.pytest_cache'].includes(name))continue;const path=join(dir,name);let st;try{st=statSync(path);}catch{continue;}if(st.isDirectory())walk(path,depth+1);else if(/\.(sqlite3?|db)$/i.test(name))found.push(path);}};walk(base);return found.sort();};
 const snapshot=paths=>Object.fromEntries(paths.map(path=>[relative(backend,path).replaceAll('\\','/'),{bytes:statSync(path).size,sha256:sha256(path)}]));
-let overall='passed', failure=null, beforeDatabases={}, frontendHead=null;
+let overall='passed', failure=null, beforeDatabases={}, frontendHead=null, backendHead=null;
 try{
   frontendHead=git(root,'rev-parse','HEAD'); if(expectedFrontend && frontendHead!==expectedFrontend)throw new Error(`frontend HEAD ${frontendHead} != ${expectedFrontend}`);
   if(git(root,'status','--short'))throw new Error('frontend working tree must be clean before qualification');
-  const backendHead=git(backend,'rev-parse','HEAD'); if(backendHead!==expectedBackend)throw new Error(`backend HEAD ${backendHead} != ${expectedBackend}`);
+  backendHead=git(backend,'rev-parse','HEAD'); if(expectedBackend && backendHead!==expectedBackend)throw new Error(`backend HEAD ${backendHead} != ${expectedBackend}`);
   if(git(backend,'status','--short'))throw new Error('backend working tree must be clean before qualification');
   const frontendTests=[
     'validate-alpha1-architecture-baseline.mjs','test-alpha2-reader-interaction.mjs','test-alpha3-selection-interaction.mjs','test-alpha4-known-word-authority.mjs','test-alpha5-latest-kiku-enrichment.mjs','test-alpha6-status-authority.mjs','test-alpha7-contract-consolidation.mjs','test-alpha8-persistence-hardening.mjs','test-alpha9-retirement.mjs','test-alpha10-release-candidate.mjs',
@@ -57,5 +57,5 @@ try{
   if(git(root,'status','--short'))throw new Error('frontend working tree changed during qualification');
   if(git(backend,'status','--short'))throw new Error('backend working tree changed during qualification');
 }catch(error){overall='failed';failure=String(error?.message||error);console.error(`\n[FAILED] ${failure}`);}
-const report={schema:'Phase15FunctionalQualification.v1',phase:'15.9',startedAt,completedAt:new Date().toISOString(),overall,frontend:{root,actualCommit:frontendHead,expectedCommit:expectedFrontend||frontendHead},backend:{root:backend,expectedCommit:expectedBackend,executed:runBackend,databaseGuards:beforeDatabases},environment:{platform:process.platform,node:process.version},results,failure,manualWorksheet:'docs/PHASE15_9_RUNTIME_QUALIFICATION.md'};
+const report={schema:'Phase15FunctionalQualification.v1',phase:'15.9',startedAt,completedAt:new Date().toISOString(),overall,frontend:{root,actualCommit:frontendHead,expectedCommit:expectedFrontend||frontendHead},backend:{root:backend,actualCommit:backendHead,expectedCommit:expectedBackend||backendHead,executed:runBackend,databaseGuards:beforeDatabases},environment:{platform:process.platform,node:process.version},results,failure,manualWorksheet:'docs/PHASE15_9_RUNTIME_QUALIFICATION.md'};
 mkdirSync(evidenceDir,{recursive:true});const path=join(evidenceDir,'phase15_9_qualification.json');writeFileSync(path,JSON.stringify(report,null,2)+'\n');console.log(`\nEvidence: ${path}`);process.exitCode=overall==='passed'?0:1;
