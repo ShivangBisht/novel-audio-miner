@@ -3,6 +3,7 @@ import DictionaryManagementPanel from './DictionaryManagementPanel.jsx';
 import TeachingPanel from './TeachingPanel.jsx';
 import { ReaderShell, ReaderStatusBar, ReaderTopBar, ReaderMainLayout, ReaderSidebar, ReaderViewport } from './reader/ReaderShell.jsx';
 import { ReaderHeader, ReaderNavigation, ReaderSidebarToggle, ReaderSceneFrame } from './reader/ReaderChrome.jsx';
+import ReaderActionArea from './reader/ReaderActionArea.jsx';
 import { resolveTeachingSelection, teachingSelectionMessage } from '../lib/teachingSelectionResolver.js';
 import { getProgress, saveProgress } from '../lib/storage.js';
 import { checkAnkiConnect, ankiRequest } from '../lib/ankiConnect.js';
@@ -1247,26 +1248,19 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
           )}
 
           {isText && (
-            <div className="action-bar">
-              <div className="selected-word">
-                <span className="label">Selected:</span>
-                <span className="word" title={selectedText}>{selectedText || '—'}</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                {isWorking && <span className="mine-status">Working...</span>}
-                {enrichmentOperation?.pinnedTarget && <span className={`mine-status ${enrichmentOperation.comparison?.status === 'mismatch' ? 'warning' : ''}`} title={enrichmentOperation.comparison?.warning || ''}>Target #{enrichmentOperation.pinnedTarget.noteId} · {enrichmentOperation.pinnedTarget.expression || 'expression unavailable'}</span>}
-                {enrichResult && !isWorking && <span className="mine-status" style={{ color: 'var(--success)' }}>✓ {enrichResult.source}</span>}
-                {(() => {
-                  const action = getAnalyzerActionState();
-                  if (!selectedText) return <button className="secondary mark-known-btn" disabled>Mark as Known</button>;
-                  if (action.canUndoKnown) return <button className="secondary mark-known-btn" onClick={() => handleUndoKnown(selectedText)} disabled={isWorking}>Undo Known</button>;
-                  if (action.knownFromAnki) return <button className="secondary mark-known-btn known-from-anki-btn" disabled title="This analyzer lookup key is already known from Anki/cache.">Known from Anki</button>;
-                  if (action.canMarkKnown) return <button className="secondary mark-known-btn" onClick={() => handleMarkKnown(selectedText)} disabled={isWorking}>Mark as Known</button>;
-                  return <button className="secondary mark-known-btn non-learning-word-btn" disabled title={selectionIssue || action.knownMessage}>{action.knownMessage || 'Not vocabulary-known eligible'}</button>;
-                })()}
-                <button className="mine-btn" onClick={handleMine} disabled={!selectedText || isWorking || (!selectedReaderContext || selectedReaderContext.eligibleForMining !== true)}>⚡ Mine to Anki</button>
-              </div>
-            </div>
+            <ReaderActionArea
+              selectedText={selectedText}
+              interaction={selectedReaderContext}
+              selectionIssue={selectionIssue}
+              actionState={getAnalyzerActionState()}
+              isWorking={isWorking}
+              enrichmentOperation={enrichmentOperation}
+              enrichmentResult={enrichResult}
+              enrichmentStatus={statusDomains.enrichment}
+              onMarkKnown={() => handleMarkKnown(selectedText)}
+              onUndoKnown={() => handleUndoKnown(selectedText)}
+              onMine={handleMine}
+            />
           )}
         </ReaderViewport>
         {toolsOpen && (

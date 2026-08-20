@@ -17,7 +17,7 @@
       },
       "response": {
         "required": [
-          "analyzerVersion",
+          "version",
           "readerSpanSchemaVersion",
           "correctionRevision"
         ]

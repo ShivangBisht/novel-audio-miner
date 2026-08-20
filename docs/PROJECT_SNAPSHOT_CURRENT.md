@@ -502,3 +502,8 @@ Alpha 9 removes the unused known-word legacy-key symbol while preserving bounded
 ## Alpha 10 full-system qualification and release candidate
 
 Alpha 10 binds the frontend and backend checkpoints in a release-candidate manifest, adds a complete inherited automated gate, replaces stale Kuromoji-era release documentation, and provides an operator runtime worksheet. Initial status is implementation-complete and release remains blocked until backend, runtime, shutdown, clean-repository, and pushed-commit evidence is recorded.
+
+
+## Phase 15.5 Reader actions and feedback cleanup
+
+Phase 15.5 extracts the Reader action area into a presentation-only component and clarifies selected-span role, known ownership, mining eligibility, pinned Kiku target, progress, completion, mismatch, failure, and recovery text. Alpha 1-10 authority, persistence, and release-candidate boundaries remain unchanged.
