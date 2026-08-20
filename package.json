@@ -75,7 +75,8 @@
     "test:alpha10": "npm run test:alpha9 && node scripts/test-alpha10-release-candidate.mjs && npm run build",
     "test:phase15.5": "npm run test:alpha10 && node scripts/test-phase15-reader-actions.mjs && npm run build",
     "test:phase15.6": "npm run test:phase15.5 && node scripts/test-phase15-teaching-presentation.mjs && npm run build",
-    "test:phase15.7": "npm run test:phase15.6 && node scripts/test-phase15-settings-workspace.mjs && npm run build"
+    "test:phase15.7": "npm run test:phase15.6 && node scripts/test-phase15-settings-workspace.mjs && npm run build",
+    "test:phase15.8": "npm run test:phase15.7 && node scripts/test-phase15-design-system.mjs && npm run build"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.3",

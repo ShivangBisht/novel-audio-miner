@@ -15,11 +15,26 @@ function Metric({ label, value, tone='' }) { return <div className={`settings-me
 export default function SettingsWorkspace(props) {
   const [section,setSection]=useState('reading');
   const closeRef=useRef(null);
-  useEffect(()=>{ closeRef.current?.focus(); const key=e=>{ if(e.key==='Escape') props.onClose(); }; window.addEventListener('keydown',key); return()=>window.removeEventListener('keydown',key); },[]);
+  const dialogRef=useRef(null);
+  useEffect(()=>{
+    const returnTarget=document.activeElement;
+    closeRef.current?.focus();
+    const key=event=>{
+      if(event.key==='Escape'){ event.preventDefault(); props.onClose(); return; }
+      if(event.key!=='Tab') return;
+      const focusable=[...(dialogRef.current?.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])')||[])];
+      if(!focusable.length) return;
+      const first=focusable[0], last=focusable[focusable.length-1];
+      if(event.shiftKey && document.activeElement===first){ event.preventDefault(); last.focus(); }
+      else if(!event.shiftKey && document.activeElement===last){ event.preventDefault(); first.focus(); }
+    };
+    window.addEventListener('keydown',key);
+    return()=>{ window.removeEventListener('keydown',key); returnTarget?.focus?.(); };
+  },[]);
   const fieldEntries=Object.entries(props.fields || {});
   return <div className="settings-workspace-layer" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget)props.onClose();}}>
-    <section className="settings-workspace" role="dialog" aria-modal="true" aria-labelledby="settings-workspace-title">
-      <header className="settings-workspace-header"><div><span>Application workspace</span><h2 id="settings-workspace-title">Settings and administration</h2><p>Reading preferences, integrations, dictionaries, Teaching administration, and diagnostics.</p></div><button ref={closeRef} type="button" className="secondary" onClick={props.onClose}>Close</button></header>
+    <section ref={dialogRef} className="settings-workspace" role="dialog" aria-modal="true" aria-labelledby="settings-workspace-title" aria-describedby="settings-workspace-description">
+      <header className="settings-workspace-header"><div><span>Application workspace</span><h2 id="settings-workspace-title">Settings and administration</h2><p id="settings-workspace-description">Reading preferences, integrations, dictionaries, Teaching administration, and diagnostics.</p></div><button ref={closeRef} type="button" className="secondary" onClick={props.onClose}>Close</button></header>
       <div className="settings-workspace-layout">
         <nav className="settings-workspace-nav" aria-label="Settings sections">{SECTIONS.map(([id,label,description])=><button type="button" key={id} className={section===id?'active':''} aria-current={section===id?'page':undefined} onClick={()=>setSection(id)}><strong>{label}</strong><span>{description}</span></button>)}</nav>
         <main className="settings-workspace-content" tabIndex="-1">

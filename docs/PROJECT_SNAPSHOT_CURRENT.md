@@ -516,3 +516,6 @@ The Teaching surface opens from the left edge of the Reader content area, uses a
 
 ## Phase 15.7 settings and administration workspace
 Phase 15.7 replaces nested Reader Tools disclosures with a coherent responsive workspace for Reading, Integrations, Dictionaries, Teaching administration, and Diagnostics while retaining existing clients, state ownership, persistence, and backend contracts.
+
+## Phase 15.8 design system, responsiveness, and accessibility
+Phase 15.8 consolidates semantic UI tokens, shared controls, focus treatment, touch sizing, responsive overflow behavior, reduced motion, forced-colour support, and Settings focus management while preserving Reader typography and all processing contracts.
