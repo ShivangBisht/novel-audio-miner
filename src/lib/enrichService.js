@@ -11,10 +11,10 @@
 
 import { getKnownWords } from './wordCache.js';
 
-const NADESHIKO_API_KEY = 'nade_rGJBvOiBGNoLXjifckoSanCnSuoTtwjuhnlRqVVyhKyGZlGoxKRbgshSsJbifoMc';
 const NADESHIKO_BASE_URL = 'https://nadeshiko.co';
 const NADESHIKO_SEARCH_ENDPOINT = '/api/nadeshiko/v1/search';
 const VOICEVOX_SPEAKER = 20;
+const MIN_CONTENT_LENGTH = 5;
 const FUNCTION_POS = new Set(['助詞', '助動詞', '補助記号']);
 
 function getSessionToken() {
@@ -66,28 +66,25 @@ async function searchNadeshiko(word) {
   if (isTtsForced()) throw new Error('TTS forced');
   const body = {
     query: { search: word },
-    take: 15,
+    take: 50,
     filters: { contentRating: ['SAFE', 'SUGGESTIVE'] },
     include: ['media']
   };
   const headers = {
-    'Content-Type': 'application/json',
-    'User-Agent': 'nadeshiko-sdk-ts/2.1.0',
-    'Accept': '*/*'
+  'Content-Type': 'application/json',
+  'Accept': 'application/json'
   };
-  const sessionToken = getSessionToken();
-  if (sessionToken) {
-    headers['Cookie'] = `__Secure-nadeshiko.session_token=${sessionToken}`;
-  } else {
-    headers['X-API-Key'] = NADESHIKO_API_KEY;
-  }
   const response = await fetch(NADESHIKO_SEARCH_ENDPOINT, {
     method: 'POST', headers, body: JSON.stringify(body)
   });
   if (!response.ok) {
     throw new Error(`Nadeshiko API HTTP ${response.status}`);
   }
-  return response.json();
+  const data = await response.json();
+  if (!data || !Array.isArray(data.segments)) {
+    throw new Error('Nadeshiko response did not contain a segments array.');
+  }
+  return data;
 }
 
 function scoreSegment(segment, targetWord, knownWords) {
@@ -107,21 +104,56 @@ function scoreSegment(segment, targetWord, knownWords) {
   return { score, unknownCount, hasAudio, contentLength: clen };
 }
 
-function pickBestSegment(segments, targetWord, knownWords) {
+export function pickBestSegment(segments, targetWord, knownWords) {
   if (!segments.length) return null;
-  const scoredAll = segments.map(seg => ({
+  const scored = segments.map((seg, index) => ({
     seg,
+    index,
     ...scoreSegment(seg, targetWord, knownWords)
   }));
-  scoredAll.sort((a, b) => a.score - b.score);
-  const i1Candidates = scoredAll.filter(s => s.unknownCount <= 1 && s.contentLength >= MIN_CONTENT_LENGTH);
-  if (i1Candidates.length > 0) return { segment: i1Candidates[0].seg, mode: 'i+1', stats: i1Candidates[0] };
-  const i2Candidates = scoredAll.filter(s => s.unknownCount <= 2 && s.contentLength >= MIN_CONTENT_LENGTH);
-  if (i2Candidates.length > 0) return { segment: i2Candidates[0].seg, mode: 'i+2', stats: i2Candidates[0] };
-  const anyLong = scoredAll.filter(s => s.contentLength >= MIN_CONTENT_LENGTH);
-  if (anyLong.length > 0) return { segment: anyLong[0].seg, mode: 'fallback', stats: anyLong[0] };
-  const longest = scoredAll.reduce((a, b) => a.contentLength >= b.contentLength ? a : b);
-  return { segment: longest.seg, mode: 'fallback-short', stats: longest };
+  const containsTarget = item => {
+    const sentence = item.seg.textJa?.content || '';
+    const tokens = item.seg.textJa?.tokens || [];
+    return sentence.includes(targetWord) || tokens.some(token => (token.d || token.s || '') === targetWord);
+  };
+  const isRepetitive = value => {
+    const compact = String(value || '').replace(/\s+/g, '');
+    if (compact.length < 8) return false;
+    for (let size = 2; size <= Math.min(8, Math.floor(compact.length / 2)); size++) {
+      const unit = compact.slice(0, size);
+      if (unit.repeat(Math.ceil(compact.length / size)).slice(0, compact.length) === compact) return true;
+    }
+    return false;
+  };
+  const mediaRank = item => (item.seg.urls?.audioUrl ? 2 : 0) + (item.seg.urls?.imageUrl ? 1 : 0);
+  const hasRequiredMedia = item => Boolean(item.seg.urls?.audioUrl && item.seg.urls?.imageUrl);
+  const usable = scored
+    .filter(containsTarget)
+    .filter(item => item.contentLength >= MIN_CONTENT_LENGTH)
+    .filter(item => !isRepetitive(item.seg.textJa?.content || ''));
+  const sortMediaFirst = items => [...items].sort((a, b) =>
+    Number(hasRequiredMedia(b)) - Number(hasRequiredMedia(a)) ||
+    mediaRank(b) - mediaRank(a) ||
+    a.score - b.score ||
+    a.contentLength - b.contentLength ||
+    a.index - b.index
+  );
+  const i1 = sortMediaFirst(usable.filter(item => item.unknownCount === 0));
+  if (i1.length) return { segment: i1[0].seg, mode: 'i+1', stats: i1[0] };
+  const hard = sortMediaFirst(usable.filter(item => item.unknownCount > 0));
+  if (hard.length) return { segment: hard[0].seg, mode: 'hard-fallback', stats: hard[0] };
+  const easy = [...scored]
+    .filter(containsTarget)
+    .sort((a, b) =>
+      Number(hasRequiredMedia(b)) - Number(hasRequiredMedia(a)) ||
+      mediaRank(b) - mediaRank(a) ||
+      a.unknownCount - b.unknownCount ||
+      a.contentLength - b.contentLength ||
+      a.index - b.index
+    );
+  return easy.length
+    ? { segment: easy[0].seg, mode: 'easy-fallback', stats: easy[0] }
+    : null;
 }
 
 export async function generateVoicevoxAudio(text) {
@@ -152,17 +184,18 @@ export async function generateVoicevoxAudio(text) {
   return { audioBase64, filename: `voicevox_${Date.now()}.wav` };
 }
 
-function voicevoxFallback(novelSentence) {
+function voicevoxFallback(novelSentence, fallbackReason = '') {
   return {
     sentence: novelSentence,
     sentenceFurigana: novelSentence,
     translation: '',
     audioUrl: '',
     imageUrl: '',
-    source: 'VOICEVOX (もち子さん)',
+    source: 'VOICEVOX (ã‚‚ã¡å­ã•ã‚“)',
     unknownCount: 0,
     mode: 'tts-voicevox',
-    method: 'voicevox'
+    method: 'voicevox',
+    fallbackReason
   };
 }
 
@@ -177,7 +210,9 @@ export async function autoEnrichWord(word, ankiRequestFn, noteType = 'Kiku', onP
       if (onProgress) onProgress('Loading word knowledge...');
       const knownWords = await getKnownWords(ankiRequestFn, onProgress);
       if (onProgress) onProgress('Picking best sentence...');
-      const { segment, mode, stats } = pickBestSegment(segments, trimmed, knownWords);
+      const selected = pickBestSegment(segments, trimmed, knownWords);
+      if (!selected) throw new Error('Nadeshiko returned no sentence containing the target word.');
+      const { segment, mode, stats } = selected;
       const sentence = segment.textJa?.content || '';
       const tokens = segment.textJa?.tokens || [];
       const sentenceFurigana = buildFurigana(sentence, tokens);
@@ -197,8 +232,13 @@ export async function autoEnrichWord(word, ankiRequestFn, noteType = 'Kiku', onP
     }
   } catch (err) {
     console.warn('[Enrich] Nadeshiko failed:', err.message);
+    throw Object.assign(new Error('FALLBACK_TTS'), {
+      cause: new Error(err?.message || 'Nadeshiko lookup failed or returned no usable segments.')
+    });
   }
-  throw new Error('FALLBACK_TTS');
+  throw Object.assign(new Error('FALLBACK_TTS'), {
+    cause: new Error('Nadeshiko returned no usable segments.')
+  });
 }
 
 export async function autoEnrichWordWithFallback(word, novelSentence, ankiRequestFn, noteType, onProgress) {
@@ -208,7 +248,7 @@ export async function autoEnrichWordWithFallback(word, novelSentence, ankiReques
     if (err.message === 'FALLBACK_TTS') {
       if (onProgress) onProgress('Generating VOICEVOX audio...');
       if (!novelSentence) throw new Error('No novel sentence available.');
-      return voicevoxFallback(novelSentence);
+      return voicevoxFallback(novelSentence, err?.cause?.message || 'Nadeshiko lookup did not return a usable segment.');
     }
     throw err;
   }

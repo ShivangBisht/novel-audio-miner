@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
 const HOST = '127.0.0.1';
@@ -14,7 +14,9 @@ function stripProxyPrefix(prefix) {
   return (path) => path.replace(prefix, '');
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  return {
   plugins: [react()],
   server: {
     host: HOST,
@@ -23,7 +25,17 @@ export default defineConfig({
       '/api/nadeshiko': {
         target: PROXY_TARGETS.nadeshiko,
         changeOrigin: true,
-        rewrite: stripProxyPrefix(/^\/api\/nadeshiko/)
+        rewrite: stripProxyPrefix(/^\/api\/nadeshiko/),
+        configure(proxy) {
+          proxy.on('proxyReq', (proxyReq) => {
+            if (env.NADESHIKO_API_KEY) {
+              proxyReq.setHeader(
+                'Authorization',
+                `Bearer ${env.NADESHIKO_API_KEY}`
+              );
+            }
+          });
+        }
       },
       '/api/voicevox': {
         target: PROXY_TARGETS.voicevox,
@@ -37,4 +49,5 @@ export default defineConfig({
       }
     }
   }
+  };
 });

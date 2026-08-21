@@ -15,6 +15,7 @@ const STAGE_LABELS = Object.freeze({
   enrichment: 'Searching enrichment source',
   media: 'Preparing media',
   updateNoteFields: 'Updating pinned note',
+  verifyNoteFields: 'Verifying pinned note',
   done: 'Complete',
   failed: 'Enrichment failed',
   preparing: 'Preparing enrichment'
@@ -71,7 +72,7 @@ export default function ReaderActionArea({
         <span>Target note #{target.noteId}</span><strong lang="ja">{target.expression || 'Expression unavailable'}</strong>
         {mismatch && <small>{operation.comparison?.warning || 'Selected Reader identity differs from the pinned Kiku expression.'}</small>}
       </div>}
-      {!isWorking && enrichmentResult && <div className="reader-action-result success"><strong>Enrichment complete</strong><span>{enrichmentResult.source}</span></div>}
+      {!isWorking && enrichmentResult && <div className={`reader-action-result ${operation?.outcome === 'complete' ? 'success' : 'warning'}`}><strong>{operation?.outcome === 'complete' ? 'Enrichment complete' : 'Enrichment partial'}</strong><span>{enrichmentResult.source}</span></div>}
       {failure && <div className="reader-action-result error"><strong>{failure.message}</strong>{failure.recoverable && failure.recoveryAction && <span>{failure.recoveryAction}</span>}</div>}
     </div>
     <div className="reader-action-controls">

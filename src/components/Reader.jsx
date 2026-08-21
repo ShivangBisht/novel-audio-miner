@@ -8,7 +8,7 @@ import { resolveTeachingSelection, teachingSelectionMessage } from '../lib/teach
 import { getProgress, saveProgress } from '../lib/storage.js';
 import { checkAnkiConnect, ankiRequest } from '../lib/ankiConnect.js';
 import { runLatestKikuEnrichment } from '../lib/latestKikuEnrichment.js';
-import { buildCache, clearCache, getCacheSize, getKnownWordAuthority, resolveKnownWordState, addKnownWord, addManualKnownWord, removeManualKnownWord, isManualKnownWord, isKnownWord } from '../lib/wordCache.js';
+import { buildCache, clearCache, getCacheSize, getKnownWordAuthority, resolveKnownWordState, addManualKnownWord, removeManualKnownWord, isManualKnownWord, isKnownWord } from '../lib/wordCache.js';
 import { getFrequency, startLoadingGlobalFrequency } from '../lib/frequencyMap.js';
 import {
   analyzeJpAnalyzerSentenceOnDemand,
@@ -411,6 +411,12 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   const [isWorking, setIsWorking] = useState(false);
 
   const sentenceBoxRef = useRef(null);
+  useEffect(() => {
+    if (isWorking || !enrichmentOperation) return undefined;
+    if (!['completed', 'partial'].includes(enrichmentOperation.status)) return undefined;
+    const timer = window.setTimeout(clearMiningReceipt, 5000);
+    return () => window.clearTimeout(timer);
+  }, [isWorking, enrichmentOperation?.operationId, enrichmentOperation?.status]);
 
   const displayItems = useMemo(() => {
     return (flatItems || []).map(item => {
@@ -574,6 +580,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     setSelectedText('');
     setSelectedReaderContext(null);
     setSelectionIssue('');
+    clearMiningReceipt();
     teachingAnalysisRequestRef.current += 1;
     setTeachingSelection(null);
     setTeachingAnalysis(null);
@@ -594,11 +601,13 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     setSelectedText('');
     setSelectedReaderContext(null);
     setSelectionIssue('');
+    clearMiningReceipt();
     window.getSelection()?.removeAllRanges?.();
   }
 
   function activateAnalyzerElement(element, entryPoint = 'pointer') {
     if (teachingMode || learningOwnership.source !== 'jp-analyzer') return false;
+    clearMiningReceipt();
     const identity = readAnalyzerElementIdentity(element);
     if (!identity) return false;
     const resolution = resolveAnalyzerReaderContextForOffsets(
@@ -668,6 +677,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     setTimeout(async () => {
       const rawSelectedText = getSelectedWord();
       if (!rawSelectedText) return;
+      clearMiningReceipt();
       if (teachingMode) {
         const logicalSentences = Array.isArray(currentData?.logicalSentences)
           ? currentData.logicalSentences
@@ -799,6 +809,7 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
     );
   }
   function selectNewWord(newWord) {
+    clearMiningReceipt();
     const resolution = resolveNewWordInteraction(newWord);
     if (resolution.valid) {
       setSelectedReaderContext(resolution.context);
@@ -1000,6 +1011,15 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
   function updateMiningDebug(patch) {
     setMiningDebug(prev => ({ ...(prev || {}), ...patch, updatedAt: new Date().toISOString() }));
   }
+  function clearMiningReceipt() {
+    setEnrichResult(null);
+    setEnrichmentOperation(null);
+    setMiningDebug(null);
+    setStatusDomains(current => updateStatusDomain(current, 'enrichment', {
+      phase: 'idle', severity: 'info', message: '', details: null,
+      operationId: null, recoverable: false, recoveryAction: null
+    }));
+  }
 
   async function handleMine() {
     if (!selectedText) { setMiningDebug({ status: 'blocked', stage: 'validation', selectedWord: '', error: 'Select a word first.', updatedAt: new Date().toISOString() }); publishStatus('selection', 'required', 'error', 'Select a word first.'); return; }
@@ -1034,9 +1054,18 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
         }
       });
       setEnrichResult(operation.result);
-      if (analyzerCandidate.knownLookupKey) addKnownWord(miningLookupKey);
+      let ankiKnownVerified = false;
+      try {
+        await buildCache(ankiRequest);
+        ankiKnownVerified = resolveKnownWordState(miningLookupKey).anki === true;
+      } catch (cacheError) {
+        publishStatus('known-word', 'refresh-failed', 'warning', cacheError?.message || 'Card updated, but the Anki-known cache could not be refreshed.', null, { recoverable: true, recoveryAction: 'Rebuild Anki cache' });
+      }
       setCacheVersion(value => value + 1);
-      publishStatus('enrichment', 'completed', operation.comparison.warning ? 'warning' : 'success', `Card #${operation.pinnedTarget.noteId} updated — ${operation.result.source}${operation.comparison.warning ? ` · ${operation.comparison.warning}` : ''}`, operation, { operationId: operation.operationId });
+      if (!ankiKnownVerified) {
+        publishStatus('known-word', 'verification-pending', 'warning', `Card updated, but ${miningLookupKey} is not yet verified as known from Anki.`, null, { recoverable: true, recoveryAction: 'Rebuild Anki cache' });
+      }
+      publishStatus('enrichment', operation.outcome === 'complete' ? 'completed' : 'partial', operation.outcome === 'complete' && !operation.comparison.warning ? 'success' : 'warning', `Card #${operation.pinnedTarget.noteId} updated — ${operation.result.source}${operation.comparison.warning ? ` · ${operation.comparison.warning}` : ''}`, operation, { operationId: operation.operationId });
     } catch (error) {
       const failed = error?.enrichmentOperation || null;
       if (failed) { setEnrichmentOperation(failed); setMiningDebug(failed); }

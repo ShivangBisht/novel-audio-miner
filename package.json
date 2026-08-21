@@ -80,7 +80,8 @@
     "test:phase15.9": "node scripts/test-phase15-functional-qualification.mjs && node scripts/run-phase15-9-qualification.mjs",
     "qualify:phase15.9:backend": "node scripts/run-phase15-9-qualification.mjs --backend",
     "test:phase15.9a": "node scripts/test-phase15-9a-reader-compaction.mjs",
-    "validate:phase15.10": "node scripts/validate-phase15-closeout.mjs"
+    "validate:phase15.10": "node scripts/validate-phase15-closeout.mjs",
+    "test:nadeshiko-anki-known": "node scripts/test-nadeshiko-anki-known-fix.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.3",
