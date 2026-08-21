@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const reader=fs.readFileSync('src/components/Reader.jsx','utf8');
+const chrome=fs.readFileSync('src/components/reader/ReaderChrome.jsx','utf8');
+const css=fs.readFileSync('src/styles.css','utf8');
+const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
+for(const token of ['data-sidebar-group="chapters"','reader-sidebar-chapters','<ReaderHeader','<ReaderNavigation','<ReaderSidebarToggle'])assert.ok(reader.includes(token),token);
+for(const retired of ['data-sidebar-group="book"','data-sidebar-group="navigation"','reader-sidebar-progress','<span>{cleanedTitle}</span>'])assert.equal(reader.includes(retired),false,retired);
+for(const token of ["reader-scene-current","sidebar-toggle ${open ? 'open' : 'closed'}","aria-label={open ? 'Close reading sidebar' : 'Open reading sidebar'}"])assert.ok(chrome.includes(token),token);
+for(const token of ['PHASE15_9A_READER_COMPACTION_BEGIN','.sidebar-toggle.open{left:304px}','.reader-header{min-height:62px','@media(max-width:700px)','padding:12px 10px'])assert.ok(css.includes(token),token);
+assert.equal(pkg.scripts['test:phase15.9a'],'node scripts/test-phase15-9a-reader-compaction.mjs');
+console.log('Phase 15.9A Reader chrome compaction tests passed');

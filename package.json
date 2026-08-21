@@ -78,7 +78,8 @@
     "test:phase15.7": "npm run test:phase15.6 && node scripts/test-phase15-settings-workspace.mjs && npm run build",
     "test:phase15.8": "npm run test:phase15.7 && node scripts/test-phase15-design-system.mjs && npm run build",
     "test:phase15.9": "node scripts/test-phase15-functional-qualification.mjs && node scripts/run-phase15-9-qualification.mjs",
-    "qualify:phase15.9:backend": "node scripts/run-phase15-9-qualification.mjs --backend"
+    "qualify:phase15.9:backend": "node scripts/run-phase15-9-qualification.mjs --backend",
+    "test:phase15.9a": "node scripts/test-phase15-9a-reader-compaction.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "6.0.3",

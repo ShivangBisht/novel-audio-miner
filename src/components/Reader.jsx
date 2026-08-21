@@ -1076,8 +1076,6 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
           <span title={`Anki ${knownWordAuthority.ankiCount} · Manual ${knownWordAuthority.manualCount} · ${knownWordAuthority.phase}`}>{getCacheSize()} known · {knownWordAuthority.phase}</span>
           <span>·</span>
           <span>{!globalFreqReady ? 'Freq loading...' : forceTts ? 'VOICEVOX' : 'Nadeshiko'}</span>
-          <span>·</span>
-          <span>{cleanedTitle}</span>
         </div>
       </ReaderStatusBar>
 
@@ -1097,27 +1095,12 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
         <ReaderSidebarToggle open={sidebarOpen} onToggle={() => setSidebarOpen(value => !value)} />
 
         <ReaderSidebar open={sidebarOpen}>
-          <section className="reader-sidebar-section reader-sidebar-book" data-sidebar-group="book">
-            <span className="reader-sidebar-section-title">Book</span>
-            <h2>{cleanedTitle}</h2>
-            <p className="book-author">{book.author || 'Unknown author'}</p>
-            <div className="reader-sidebar-metrics">
-              <span><strong>{book.chapters.length}</strong> chapters</span>
-              <span><strong>{totalScenes}</strong> scenes</span>
-            </div>
-          </section>
-          <section className="reader-sidebar-section" data-sidebar-group="navigation">
-            <span className="reader-sidebar-section-title">Navigation</span>
-            <div className="reader-sidebar-progress">
-              <div className="reader-sidebar-progress-copy"><span>Scene {itemIndex + 1} of {totalScenes}</span><strong>{Math.round(((itemIndex + 1) / totalScenes) * 100)}%</strong></div>
-              <div className="reader-sidebar-progress-track" aria-hidden="true"><span style={{ width: `${Math.round(((itemIndex + 1) / totalScenes) * 100)}%` }} /></div>
-            </div>
-            <div>
-              <label className="section-label" htmlFor="reader-chapter-select">Jump to chapter</label>
-              <select id="reader-chapter-select" className="chapter-select" value={currentChapterIdx} onChange={event => jumpToChapter(event.target.value)}>
-                {book.chapters.map((chapter, index) => <option key={chapter.id} value={index}>{index + 1}. {chapter.title || `Chapter ${index + 1}`}</option>)}
-              </select>
-            </div>
+          <section className="reader-sidebar-section reader-sidebar-chapters" data-sidebar-group="chapters">
+            <span className="reader-sidebar-section-title">Chapters</span>
+            <label className="section-label" htmlFor="reader-chapter-select">Jump to chapter</label>
+            <select id="reader-chapter-select" className="chapter-select" value={currentChapterIdx} onChange={event => jumpToChapter(event.target.value)}>
+              {book.chapters.map((chapter, index) => <option key={chapter.id} value={index}>{index + 1}. {chapter.title || `Chapter ${index + 1}`}</option>)}
+            </select>
           </section>
           <section className="reader-sidebar-section" data-sidebar-group="new-words">
             <span className="reader-sidebar-section-title">New Words</span>
@@ -1173,12 +1156,8 @@ export default function Reader({ book, flatItems, chapterImageLists, onLoadAnoth
 
         <ReaderViewport>
           <ReaderNavigation
-            chapterTitle={currentData?.chapterTitle || ''}
-            chapterIndex={currentChapterIdx}
-            chapterCount={book.chapters.length}
             sceneNumber={itemIndex + 1}
             sceneCount={totalScenes}
-            sceneType={isImage ? 'illustration' : 'text'}
             goInput={goInput}
             onGoInput={event => setGoInput(event.target.value)}
             onGo={handleGo}

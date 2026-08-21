@@ -522,3 +522,6 @@ Phase 15.8 consolidates semantic UI tokens, shared controls, focus treatment, to
 
 ## Phase 15.9 functional qualification
 Phase 15.9 adds a non-nested automated qualification harness, optional guarded backend pytest execution, external machine-readable evidence, and a structured manual worksheet for runtime, launcher, accessibility, responsive, mining, Teaching, and shutdown qualification.
+
+## Phase 15.9A Reader chrome compaction
+Phase 15.9A removes redundant Reader metadata, relocates the sidebar toggle away from content, and gives the reading viewport more height at desktop and narrow widths. Processing and persistence contracts are unchanged.

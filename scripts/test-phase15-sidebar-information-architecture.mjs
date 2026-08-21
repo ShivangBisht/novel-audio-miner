@@ -7,12 +7,13 @@ const workspace = fs.readFileSync('src/components/SettingsWorkspace.jsx', 'utf8'
 const styles = fs.readFileSync('src/styles.css', 'utf8');
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 
-for (const group of ['book', 'navigation', 'new-words', 'illustrations', 'display']) {
+for (const group of ['chapters', 'new-words', 'illustrations', 'display']) {
   assert.ok(reader.includes(`data-sidebar-group="${group}"`), `missing sidebar group ${group}`);
 }
-for (const label of ['Book', 'Navigation', 'New Words', 'Illustrations', 'Display']) {
+for (const label of ['Chapters', 'New Words', 'Illustrations', 'Display']) {
   assert.ok(reader.includes(`reader-sidebar-section-title">${label}`), `missing sidebar label ${label}`);
 }
+for (const retired of ['data-sidebar-group="book"', 'data-sidebar-group="navigation"', 'reader-sidebar-progress']) assert.equal(reader.includes(retired), false, `redundant sidebar metadata remains: ${retired}`);
 
 assert.ok(reader.includes("import SettingsWorkspace from './SettingsWorkspace.jsx'"));
 assert.ok(reader.includes('<SettingsWorkspace'));

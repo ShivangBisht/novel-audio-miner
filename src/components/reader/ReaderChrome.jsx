@@ -40,12 +40,8 @@ export function ReaderHeader({
 }
 
 export function ReaderNavigation({
-  chapterTitle,
-  chapterIndex,
-  chapterCount,
   sceneNumber,
   sceneCount,
-  sceneType,
   goInput,
   onGoInput,
   onGo,
@@ -55,17 +51,12 @@ export function ReaderNavigation({
   nextDisabled
 }) {
   return <nav className="reader-navigation" aria-label="Reader navigation" data-testid="reader-navigation">
-    <div className="reader-navigation-location">
-      <span className="reader-navigation-label">{sceneType === 'illustration' ? 'Illustration' : 'Reading scene'}</span>
-      <strong>{chapterTitle || `Chapter ${chapterIndex + 1}`}</strong>
-      <span>Chapter {chapterIndex + 1}/{chapterCount} · Scene {sceneNumber}/{sceneCount}</span>
-    </div>
     <div className="reader-navigation-actions">
       <button type="button" className="reader-nav-button secondary" onClick={onPrevious} disabled={previousDisabled} aria-label="Previous scene">
         <span aria-hidden="true">←</span><span>Previous</span>
       </button>
       <div className="reader-scene-jump">
-        <label htmlFor="reader-scene-number">Scene</label>
+        <label htmlFor="reader-scene-number"><span className="reader-scene-jump-label">Scene</span><span className="reader-scene-current" aria-hidden="true">{sceneNumber}/{sceneCount}</span></label>
         <input id="reader-scene-number" type="number" min="1" max={sceneCount} value={goInput} onChange={onGoInput} onKeyDown={event => { if (event.key === 'Enter') onGo(); }} placeholder={String(sceneNumber)} />
         <button type="button" className="quiet" onClick={onGo}>Go</button>
       </div>
@@ -75,11 +66,10 @@ export function ReaderNavigation({
     </div>
   </nav>;
 }
-
 export function ReaderSidebarToggle({ open, onToggle }) {
   return <button
     type="button"
-    className="sidebar-toggle"
+    className={`sidebar-toggle ${open ? 'open' : 'closed'}`}
     onClick={onToggle}
     title="Toggle sidebar (S)"
     aria-label={open ? 'Close reading sidebar' : 'Open reading sidebar'}
