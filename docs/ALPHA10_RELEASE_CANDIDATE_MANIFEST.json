@@ -12,7 +12,7 @@
     },
     "backend": {
       "branch": "main",
-      "commit": "753d7f44b3ef63cfca5b6acf02d1065704eee585",
+      "commit": "f265f2d382ec12f354bcf407dc1b4578913d9cce",
       "productionChangesRequired": true
     }
   },
