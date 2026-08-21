@@ -6,9 +6,6 @@ export function ReaderStatusBar({ children }) {
   return <div className="status-bar">{children}</div>;
 }
 
-export function ReaderTopBar({ children }) {
-  return <div className="topbar">{children}</div>;
-}
 
 export function ReaderMainLayout({ children }) {
   return <div className="main-layout">{children}</div>;

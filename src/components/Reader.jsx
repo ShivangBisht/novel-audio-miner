@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import SettingsWorkspace from './SettingsWorkspace.jsx';
 import TeachingPanel from './TeachingPanel.jsx';
-import { ReaderShell, ReaderStatusBar, ReaderTopBar, ReaderMainLayout, ReaderSidebar, ReaderViewport } from './reader/ReaderShell.jsx';
+import { ReaderShell, ReaderStatusBar, ReaderMainLayout, ReaderSidebar, ReaderViewport } from './reader/ReaderShell.jsx';
 import { ReaderHeader, ReaderNavigation, ReaderSidebarToggle, ReaderSceneFrame } from './reader/ReaderChrome.jsx';
 import ReaderActionArea from './reader/ReaderActionArea.jsx';
 import { resolveTeachingSelection, teachingSelectionMessage } from '../lib/teachingSelectionResolver.js';

@@ -35,3 +35,9 @@ Set-Location "D:\Mining\JP analyzer"
 - [ ] Record the Alpha 10 implementation commit and evidence digest.
 - [ ] Keep rollback commits recorded.
 - [ ] Push commits before creating a release tag.
+
+## Phase 15 closeout
+- [ ] Phase 15.10 pre-commit and clean-tree qualification passed.
+- [ ] Feature branch merged to `main` without rewriting history.
+- [ ] Merged `main` qualification passed.
+- [ ] `phase15-complete` tag created on the qualified merged commit and pushed.

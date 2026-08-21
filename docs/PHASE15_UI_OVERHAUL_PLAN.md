@@ -1,9 +1,7 @@
 # Phase 15 UI Overhaul Plan
 
 ## Status
-
-This is the authoritative Phase 15 roadmap. Phase 15 begins from the tagged
-`phase14-complete` baseline and changes presentation only.
+Complete. Phase 15.1 through Phase 15.9A are qualified. Phase 15.10 consolidates snapshots, retires proven-unused presentation remnants, validates the final cross-project state, and prepares the `phase15-complete` merge tag.
 
 ## Purpose
 

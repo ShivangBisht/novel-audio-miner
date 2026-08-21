@@ -1,5 +1,21 @@
 # Project Snapshot Current
 
+## Authoritative Phase 15 closeout status
+**Snapshot date:** 21 August 2026, IST
+**Repository:** Novel Audio Miner
+**Production baseline:** Phase 15 complete
+**Qualified feature commit:** `361394a906a56fed5fc0ae2303d63ca5b7e904c7`
+**Qualified backend commit:** `753d7f44b3ef63cfca5b6acf02d1065704eee585`
+**Next planned phase:** Phase 16
+
+Phase 15.1 through Phase 15.9A are complete. The Reader shell, reading interface, sidebar, action feedback, Teaching presentation, Settings workspace, semantic design system, accessibility behavior, responsive layouts, qualification harness, and Reader chrome compaction are qualified. Runtime review passed. The final automated gate passed 63 direct frontend tests, the production build, 152 backend tests with one intentional skip, database hash guards, and clean repository checks.
+
+JP Analyzer remains the sole linguistic authority. EPUB reconstruction, logical sentence ownership, `readerSpans`, known-word semantics, mining, Teaching persistence, dictionary transactions, tuning, activation, and deployment boundaries remain unchanged except for the separately qualified Teaching annotation history ordering correction at backend `753d7f44b3ef63cfca5b6acf02d1065704eee585`. Phase 9 tuning remains deferred until corpus maturity.
+
+The production JavaScript chunk remains above Vite's default 500 kB advisory threshold; this is nonblocking and deferred to measured performance work.
+
+---
+
 <!-- PHASE14_CONSOLIDATED_SNAPSHOT_START -->
 ## Consolidated current status through Phase 14
 

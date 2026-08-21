@@ -44,3 +44,6 @@ Run the complete supported backend suite from the JP Analyzer repository:
 ```
 
 Automated success is necessary but not sufficient for release. Complete `docs/ALPHA10_RUNTIME_QUALIFICATION.md`, verify safe shutdown, record evidence, and keep both repositories clean before promoting the manifest to release-candidate status.
+
+## Phase 15 complete
+The qualified Phase 15 interface provides a compact Reader, responsive Teaching and Settings workspaces, shared accessibility and design-system behavior, and guarded cross-project qualification. See `docs/PHASE15_10_FINAL_CLOSEOUT.md`.

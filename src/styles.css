@@ -47,14 +47,6 @@ body {
 .status-dot.error { background: var(--danger); }
 .status-dot.warn { background: var(--warning); }
 
-/* ─── Top bar ─── */
-.topbar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--border);
-}
-.topbar h1 { font-size: 18px; font-weight: 600; color: var(--text); }
-.topbar .version { font-size: 11px; color: var(--muted); margin-left: 8px; }
-.topbar button { padding: 6px 14px; font-size: 13px; }
 
 /* ─── Main layout ─── */
 .main-layout { display: flex; flex: 1; overflow: hidden; position: relative; }
@@ -88,19 +80,6 @@ body {
 /* ─── Reader area ─── */
 .reader-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 16px; }
 
-/* ─── Navigation header ─── */
-.nav-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding-bottom: 12px; gap: 12px;
-}
-.nav-header .chapter-info { font-size: 13px; color: var(--muted); }
-.nav-header .nav-controls { display: flex; align-items: center; gap: 6px; }
-.nav-controls input[type="number"] {
-  width: 64px; text-align: center; background: var(--bg); color: var(--text);
-  border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 13px;
-}
-.nav-controls button { padding: 6px 10px; font-size: 13px; }
-.nav-header .item-counter { font-size: 13px; color: var(--muted); }
 
 /* ─── Sentence box ─── */
 .sentence-box {
@@ -188,26 +167,6 @@ body {
 }
 .image-panel .image-caption { font-size: 12px; color: var(--muted); padding: 8px 14px; text-align: center; background: rgba(0,0,0,0.5); }
 
-/* ─── Floating Action Bar ─── */
-.action-bar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 16px; background: var(--surface); border-top: 1px solid var(--border);
-  margin-top: auto; border-radius: 12px 12px 0 0;
-}
-.action-bar .selected-word { display: flex; align-items: center; gap: 8px; overflow: hidden; }
-.selected-word .label { font-size: 11px; color: var(--muted); white-space: nowrap; }
-.selected-word .word {
-  font-size: 20px; font-weight: 700; color: var(--text);
-  max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.action-bar .mine-btn {
-  background: var(--accent); color: #000; font-weight: 700; font-size: 15px;
-  padding: 12px 24px; border-radius: 999px; cursor: pointer; border: none;
-  transition: background 0.2s;
-}
-.action-bar .mine-btn:hover { background: var(--accent-hover); }
-.action-bar .mine-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.action-bar .mine-status { font-size: 12px; color: var(--muted); }
 
 /* ─── Buttons & inputs ─── */
 button {
@@ -677,25 +636,12 @@ button:focus-visible, .sidebar-toggle:focus-visible { outline: 2px solid var(--a
   letter-spacing: .11em;
   text-transform: uppercase;
 }
-.reader-sidebar-book h2 { font-size: 15px; line-height: 1.35; }
-.reader-sidebar-book .book-author { margin: -4px 0 0; }
-.reader-sidebar-metrics { display: flex; gap: 12px; color: var(--reader-muted); font-size: 11px; }
-.reader-sidebar-metrics strong { color: var(--reader-text); font-variant-numeric: tabular-nums; }
-.reader-sidebar-progress { display: grid; gap: 6px; }
-.reader-sidebar-progress-copy { display: flex; justify-content: space-between; gap: 8px; color: var(--reader-muted); font-size: 11px; }
-.reader-sidebar-progress-copy strong { color: var(--reader-text); }
-.reader-sidebar-progress-track { height: 3px; overflow: hidden; border-radius: 999px; background: rgba(148,163,184,.13); }
-.reader-sidebar-progress-track span { display: block; height: 100%; background: var(--accent); border-radius: inherit; }
 .reader-sidebar-empty { color: var(--reader-muted); font-size: 11px; line-height: 1.45; }
 .reader-sidebar-word-list { display: flex; flex-wrap: wrap; gap: 4px; }
 .reader-sidebar-display-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
 .reader-sidebar-display-actions button { min-height: 36px; padding: 7px 8px; font-size: 11px; }
 .reader-sidebar-display-actions .teaching-toggle { grid-column: 1 / -1; }
 .reader-sidebar-style summary { color: var(--reader-muted); cursor: pointer; font-size: 11px; }
-.reader-tools-header > div { display: grid; gap: 4px; }
-.reader-tools-content > details, .reader-tools-content > .debug-panel { padding: 13px; border: 1px solid var(--reader-border); border-radius: var(--reader-radius-md); background: #0c1117; }
-.reader-tools-content > details > summary { cursor: pointer; color: var(--reader-text); font-weight: 650; }
-.reader-tools-content > details[open] > summary { margin-bottom: 10px; }
 .reader-tools-button { min-height: 38px; white-space: nowrap; }
 .reader-header-actions { display: flex; align-items: center; gap: 8px; }
 @media (max-width: 768px) {

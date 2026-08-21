@@ -6,7 +6,7 @@ const shell = fs.readFileSync('src/components/reader/ReaderShell.jsx', 'utf8');
 const workspace = fs.readFileSync('src/components/SettingsWorkspace.jsx', 'utf8');
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 
-for (const name of ['ReaderShell', 'ReaderStatusBar', 'ReaderTopBar', 'ReaderMainLayout', 'ReaderSidebar', 'ReaderViewport']) {
+for (const name of ['ReaderShell', 'ReaderStatusBar', 'ReaderMainLayout', 'ReaderSidebar', 'ReaderViewport']) {
   assert.ok(shell.includes(`export function ${name}(`), `missing ${name}`);
 }
 for (const name of ['ReaderShell', 'ReaderStatusBar', 'ReaderMainLayout', 'ReaderSidebar', 'ReaderViewport']) {
@@ -16,12 +16,9 @@ for (const name of ['ReaderShell', 'ReaderStatusBar', 'ReaderMainLayout', 'Reade
 const chrome = fs.existsSync('src/components/reader/ReaderChrome.jsx')
   ? fs.readFileSync('src/components/reader/ReaderChrome.jsx', 'utf8')
   : '';
-assert.ok(
-  reader.includes('<ReaderTopBar') || chrome.includes('export function ReaderHeader('),
-  'Reader must use the legacy top bar or the Phase 15.3 ReaderHeader replacement'
-);
+assert.ok(chrome.includes('export function ReaderHeader('), 'Reader must use the Phase 15.3 ReaderHeader');
 
-for (const className of ['status-bar', 'topbar', 'main-layout', 'sidebar', 'reader-area']) {
+for (const className of ['status-bar', 'main-layout', 'sidebar', 'reader-area']) {
   assert.ok(shell.includes(className), `shell missing preserved class ${className}`);
 }
 
