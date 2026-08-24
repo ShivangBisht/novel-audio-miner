@@ -129,4 +129,31 @@ assert.equal(
   'sentence'
 );
 
+
+const losslessPackageModel={
+ manifest:new Map(),guideReferences:[],coverCandidates:[],
+ spine:[{spineIndex:0,resource:{canonicalHref:'lossless.xhtml'}}],
+ navigation:[{index:0,title:'Chapter',target:{documentHref:'lossless.xhtml',fragmentId:null}}]
+};
+const losslessDocuments=[{
+ documentHref:'lossless.xhtml',spineIndex:0,
+ events:[
+  {type:'text-block',eventIndex:0,plainText:'Chapter'},
+  {type:'text-block',eventIndex:1,plainText:'女性の名前は、京香。夫を若くして失って以来、橘家を支える家長だ。',htmlText:'女性の名前は、<ruby>京香<rt>きょうか</rt></ruby>。夫を若くして失って以来、橘家を支える家長だ。',hasRuby:true}
+ ]
+}];
+const losslessBookModel=buildEpubBookSectionModel({packageModel:losslessPackageModel,documents:losslessDocuments});
+const losslessRuntime={packageModel:losslessPackageModel,documents:losslessDocuments,bookModel:losslessBookModel,imageModel:{occurrences:[]},diagnostics:{reconstructionFailureCount:0,documents:[]}};
+const losslessModel=await buildEpubReaderModel({runtime:losslessRuntime,zip});
+const losslessText=losslessModel.flatItems.filter(item=>item.type==='sentence');
+assert.deepEqual(losslessText.map(item=>item.plainText),['女性の名前は、京香。','夫を若くして失って以来、橘家を支える家長だ。']);
+assert.deepEqual(losslessText.map(item=>item.parserDebug.firstSourceRangeIndex),[0,1]);
+assert.equal(losslessText[0].htmlText.includes('<ruby>京香<rt>きょうか</rt></ruby>'),true);
+assert.equal(losslessModel.diagnostics.contextualActivation.sourceCandidateCount,2);
+assert.equal(losslessModel.diagnostics.contextualActivation.ownedCandidateCount,2);
+assert.deepEqual(losslessModel.diagnostics.contextualActivation.missingCandidateKeys,[]);
+assert.deepEqual(losslessModel.diagnostics.contextualActivation.duplicateCandidateKeys,[]);
+assert.equal(losslessModel.diagnostics.contextualActivation.startEventCollisionCount,1);
+assert.equal(losslessModel.diagnostics.contextualActivation.maximumScenesPerStartEvent,2);
+
 console.log('Phase 14.5 contextual Reader activation tests passed');

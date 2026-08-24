@@ -6,6 +6,7 @@ function compare(a,b){return a.spineIndex-b.spineIndex||a.eventIndex-b.eventInde
 function contains(section,p){return Boolean(section?.start&&section?.end&&compare(p,section.start)>=0&&compare(p,section.end)<=0);}
 function sectionFor(model,p){const matches=(model?.sections||[]).filter(s=>contains(s,p));return matches.find(s=>s.type==='navigation')||matches.find(s=>s.type==='cover')||matches.find(s=>s.type==='preliminary-illustrations')||matches.find(s=>s.type==='auxiliary-front-matter')||matches.find(s=>s.type==='untitled-reading-section')||matches.find(s=>s.type==='chapter')||matches[0]||null;}
 function eventKey(href,index){return `${href}|${index}`;}
+function candidateKey(candidate){return `${candidate?.sourceDocumentHref}|${candidate?.sourceEventIndex}|${candidate?.sourceRangeIndex}`;}
 function groupKey(document,section){return `${document.documentHref}|${section.sectionIndex}`;}
 
 function contextualSourceBlockKey(candidate){
@@ -222,7 +223,7 @@ export function buildContextualSceneStream({runtime,minimumMeaningfulLength=8}={
  const documents=[...(runtime?.documents||[])].sort((a,b)=>a.spineIndex-b.spineIndex),bookModel=runtime?.bookModel;
  const headingEventKeys=
   consumedHeadingEventKeys(runtime,documents);
- const scenes=[],consumedEventKeys=new Set(),errors=[];let run=[],activeGroup=null;
+ const scenes=[],consumedEventKeys=new Set(),sourceCandidateKeys=new Set(),consumedCandidateCounts=new Map(),errors=[];let run=[],activeGroup=null;
  function flush(reason){
   if(!run.length){activeGroup=null;return;}
   const plan=planMinimumContextScenes(run,{minimumMeaningfulLength});
@@ -250,7 +251,10 @@ export function buildContextualSceneStream({runtime,minimumMeaningfulLength=8}={
     continue;
    }
    const keys=[...new Set(planned.sourceCandidates.map(c=>c.sourceEventKey))];keys.forEach(key=>consumedEventKeys.add(key));
-   scenes.push(Object.freeze({plainText:combined.plainText,htmlText:combined.htmlText,hasRuby:planned.sourceCandidates.some(c=>c.hasRuby),sectionIndex:first.sectionIndex,sectionType:first.sectionType,firstDocumentHref:first.sourceDocumentHref,firstSpineIndex:first.sourceSpineIndex,firstEventIndex:first.sourceEventIndex,lastDocumentHref:last.sourceDocumentHref,lastSpineIndex:last.sourceSpineIndex,lastEventIndex:last.sourceEventIndex,sourceEventKeys:Object.freeze(keys),logicalSentences,sourceCandidateCount:planned.sourceCandidates.length,sourceBlockBoundaryCount:combined.sourceBlockBoundaryCount,meaningfulLength:planned.meaningfulLength,attachmentDirection:planned.attachmentDirection,attachmentCount:planned.attachmentCount,planningReason:planned.planningReason,boundaryAfter:reason}));
+   const candidateKeys=planned.sourceCandidates.map(candidateKey);
+   candidateKeys.forEach(key=>consumedCandidateCounts.set(key,(consumedCandidateCounts.get(key)||0)+1));
+   const sceneOrdinal=scenes.length;
+   scenes.push(Object.freeze({sceneIdentity:`${first.sourceDocumentHref}|${first.sourceEventIndex}|${first.sourceRangeIndex}|${sceneOrdinal}`,plainText:combined.plainText,htmlText:combined.htmlText,hasRuby:planned.sourceCandidates.some(c=>c.hasRuby),sectionIndex:first.sectionIndex,sectionType:first.sectionType,firstDocumentHref:first.sourceDocumentHref,firstSpineIndex:first.sourceSpineIndex,firstEventIndex:first.sourceEventIndex,firstSourceRangeIndex:first.sourceRangeIndex,lastDocumentHref:last.sourceDocumentHref,lastSpineIndex:last.sourceSpineIndex,lastEventIndex:last.sourceEventIndex,lastSourceRangeIndex:last.sourceRangeIndex,sourceEventKeys:Object.freeze(keys),sourceCandidateKeys:Object.freeze(candidateKeys),logicalSentences,sourceCandidateCount:planned.sourceCandidates.length,sourceBlockBoundaryCount:combined.sourceBlockBoundaryCount,meaningfulLength:planned.meaningfulLength,attachmentDirection:planned.attachmentDirection,attachmentCount:planned.attachmentCount,planningReason:planned.planningReason,boundaryAfter:reason}));
   }
   run=[];activeGroup=null;
  }
@@ -274,12 +278,22 @@ export function buildContextualSceneStream({runtime,minimumMeaningfulLength=8}={
     continue;
    }
    const group=groupKey(document,section);if(activeGroup!==null&&activeGroup!==group)flush('section-change');activeGroup=group;
-   const built=candidatesFor(document,event,section);if(!built){errors.push(`candidate-mismatch:${eventKey(document.documentHref,event.eventIndex)}`);flush('invalid-candidate');continue;}run.push(...built);
+   const built=candidatesFor(document,event,section);if(!built){errors.push(`candidate-mismatch:${eventKey(document.documentHref,event.eventIndex)}`);flush('invalid-candidate');continue;}built.forEach(candidate=>sourceCandidateKeys.add(candidateKey(candidate)));run.push(...built);
   }
   flush('document-end');
  }
  flush('end');
- const starts=new Map(scenes.map(scene=>[eventKey(scene.firstDocumentHref,scene.firstEventIndex),scene]));
+ const scenesByStartEvent=new Map();
+ for(const scene of scenes){
+  const key=eventKey(scene.firstDocumentHref,scene.firstEventIndex);
+  const existing=scenesByStartEvent.get(key)||[];
+  existing.push(scene);
+  scenesByStartEvent.set(key,existing);
+ }
+ for(const [key,values] of scenesByStartEvent){
+  scenesByStartEvent.set(key,Object.freeze(values));
+ }
+ const starts=new Map([...scenesByStartEvent].map(([key,values])=>[key,values[0]]));
  const sourceTextKeys=new Set(
   documents.flatMap(document=>
    (document.events||[])
@@ -320,14 +334,29 @@ export function buildContextualSceneStream({runtime,minimumMeaningfulLength=8}={
   )
  );
  const owned=[...consumedEventKeys].filter(key=>sourceTextKeys.has(key));
+ const ownedCandidateKeys=[...consumedCandidateCounts].filter(([,count])=>count===1).map(([key])=>key);
+ const missingCandidateKeys=[...sourceCandidateKeys].filter(key=>!consumedCandidateCounts.has(key));
+ const duplicateCandidateKeys=[...consumedCandidateCounts].filter(([,count])=>count>1).map(([key])=>key);
+ const startEventCollisionCount=[...scenesByStartEvent.values()].filter(values=>values.length>1).length;
+ const maximumScenesPerStartEvent=[...scenesByStartEvent.values()].reduce((maximum,values)=>Math.max(maximum,values.length),0);
  return Object.freeze({
- schemaVersion:'14.5',
+ schemaVersion:'14.6',
  valid:
   errors.length===0&&
-  owned.length===sourceTextKeys.size,
+  owned.length===sourceTextKeys.size&&
+  missingCandidateKeys.length===0&&
+  duplicateCandidateKeys.length===0&&
+  ownedCandidateKeys.length===sourceCandidateKeys.size,
  errors:Object.freeze(errors),
  scenes:Object.freeze(scenes),
  sceneByStart:starts,
+ scenesByStartEvent,
+ sourceCandidateCount:sourceCandidateKeys.size,
+ ownedCandidateCount:ownedCandidateKeys.length,
+ missingCandidateKeys:Object.freeze(missingCandidateKeys),
+ duplicateCandidateKeys:Object.freeze(duplicateCandidateKeys),
+ startEventCollisionCount,
+ maximumScenesPerStartEvent,
  consumedEventKeys,
  consumedHeadingEventKeys:headingEventKeys,
  consumedHeadingEventCount:
